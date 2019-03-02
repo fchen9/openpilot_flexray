@@ -185,6 +185,57 @@ void run_eon_stream(DualCameraState *s) {
   av_frame_free(&frame);
 }
 
+// mkfifo /tmp/yuv_pipe
+// YUVPIPE=1 ./visiond
+// ffmpeg -i drive_data/b0c9d2329ad1606b\|2018-08-02--08-34-47--40--fcamera.hevc -f rawvideo -pix_fmt yuv420p -vf scale=1164:874 pipe:1 > /tmp/yuv_pipe
+void run_read_yuv_pipe(DualCameraState *s) {
+  CameraState *const rear_camera = &s->rear;
+  auto *tb = &rear_camera->camera_tb;
+  int fd = open("/tmp/yuv_pipe", O_RDONLY);
+  if (fd == -1) {
+    LOG("yuv pipe open error: %d\n", errno);
+    return;
+  }
+  uint32_t frame_id = 1;
+  int yuv_data_len = FRAME_WIDTH * FRAME_HEIGHT * 3 / 2;
+  while (!do_exit) {
+    const int buf_idx = tbuffer_select(tb);
+    rear_camera->camera_bufs_metadata[buf_idx] = {
+      .frame_id = frame_id++,
+      .timestamp_eof = nanos_since_boot(),
+      .frame_length = 0,
+      .integ_lines = 0,
+      .global_gain = 0,
+    };
+    cl_mem yuv_cl = rear_camera->yuv_cls[buf_idx];
+    int err = 0;
+    cl_event map_event;
+    uint8_t *yuv_buf = (uint8_t *)clEnqueueMapBuffer(rear_camera->q, yuv_cl, CL_TRUE,
+                                                CL_MAP_WRITE, 0, yuv_data_len,
+                                                0, NULL, &map_event, &err);
+    assert(err == 0);
+    clWaitForEvents(1, &map_event);
+    clReleaseEvent(map_event);
+    int recved = 0;
+    while(recved < yuv_data_len) {
+      int ret = read(fd, yuv_buf + recved, yuv_data_len - recved);
+      if(ret < 0) {
+        do_exit = 1;
+        break;
+      } else if(ret == 0) {
+        if(do_exit)
+          break;
+        usleep(10 * 1000);
+      }
+      recved += ret;
+    }
+    //read_file("/home/nanami/data/yuv", yuv_buf, yuv_data_len);
+    clEnqueueUnmapMemObject(rear_camera->q, yuv_cl, yuv_buf, 0, NULL, &map_event);
+    tbuffer_dispatch(tb, buf_idx);
+    usleep(30*1000);
+  }
+}
+
 }  // namespace
 
 CameraInfo cameras_supported[CAMERA_ID_MAX] = {
@@ -223,6 +274,9 @@ void cameras_close(DualCameraState *s) {
 
 void cameras_run(DualCameraState *s) {
   set_thread_name("Eon streaming");
-  run_eon_stream(s);
+  if (getenv("YUVPIPE")) {
+    run_read_yuv_pipe(s);
+  }  else
+    run_eon_stream(s);
   cameras_close(s);
 }
