@@ -38,12 +38,16 @@
 
 #include "model.h"
 
+#include "monitoring.h"
+
 #include "cereal/gen/cpp/log.capnp.h"
 
 #define M_PI 3.14159265358979323846
 
 // send net input on port 9000
 //#define SEND_NET_INPUT
+
+#define MONITORING_TEST
 
 #define MAX_CLIENTS 5
 
@@ -87,6 +91,8 @@ struct VisionState {
 
   zsock_t *posenet_sock;
   void* posenet_sock_raw;
+
+  MonitoringState monitoring;
 };
 
 void cl_init(VisionState *s) {
@@ -196,6 +202,18 @@ void* processing_thread(void *arg) {
 
     // Frames from Eon streaming is in yuv420 format
     cl_mem yuv_cl = s->yuv_cl[buf_idx];
+#ifdef MONITORING_TEST
+    double mt1 = 0, mt2 = 0;
+    static int ttt = 0;
+    if(ttt++ % 10 == 0) {
+      mt1 = millis_since_boot();
+      MonitoringResult res = monitoring_eval_frame(&s->monitoring, s->cameras.rear.q,
+        s->yuv_cl[buf_idx], s->yuv_width, s->yuv_height);
+      mt2 = millis_since_boot();
+      LOG("pitch: %.2f, yaw: %.2f, roll: %.2f, yaw off: %.2f, pitch off: %.2f, ?: %.2f, std: %.2f",
+        res.vs[0], res.vs[1], res.vs[2], res.vs[3], res.vs[4], res.vs[5], sqrtf(2.f) / res.vs[6]);
+    }
+#else
     pthread_mutex_lock(&s->transform_lock);
     mat3 transform = s->cur_transform;
     const bool run_model_this_iter = s->run_model;
@@ -211,6 +229,7 @@ void* processing_thread(void *arg) {
       mt2 = millis_since_boot();
       model_publish(model_sock_raw, frame_id, model_transform, s->model_bufs[buf_idx]);
     }
+#endif //MONITORING_TEST
     cl_event map_event;
     uint8_t* yuv_ptr_y = (uint8_t *)clEnqueueMapBuffer(s->cameras.rear.q, yuv_cl, CL_TRUE,
                                             CL_MAP_READ, 0, s->yuv_buf_size,
@@ -500,6 +519,7 @@ int main(int argc, char **argv) {
   cl_init(s);
 
   model_init(&s->model, s->device_id, s->context, true);
+  monitoring_init(&s->monitoring, s->device_id, s->context);
 
   cameras_init(&s->cameras);
 
