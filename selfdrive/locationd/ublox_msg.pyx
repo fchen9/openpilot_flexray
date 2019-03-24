@@ -518,26 +518,32 @@ msg_types = {
 cdef void append_data(uint8_t *buf, uint8_t *data, uint16_t len):
   return
 
-cdef void parse_fmt(const char *fmt, uint16_t len):
+cdef void parse_fmt(char *fmt, uint16_t len):
   cdef char c = fmt[0]
   cdef uint16_t i = 0
+  print(fmt)
   while i < len:
     c = fmt[i]
     if c == ' ':
+      i += 1
       continue
     if '0' <= c and c <= '9':
-      num = c - '0'
+      num = c - ord('0')
       i += 1
       c = fmt[i]
       while '0' <= c and c <= '9':
-        num = num*10 + (c - '0')
+        num = num*10 + (c - ord('0'))
         i += 1
         c = fmt[i]
+        if i > 1000:
+          print('endless loop')
+          return
     else:
       num = 1
     print('num', num, 'format', c)
     i += 1
 
 for (msg_cls, msg_id), desc in msg_types.items():
-  print(desc.msg_format)
-  parse_fmt(desc.msg_format, len(desc.msg_format))
+  formats = desc.msg_format.split(',')
+  for fmt in formats:
+    parse_fmt(fmt, len(fmt))
