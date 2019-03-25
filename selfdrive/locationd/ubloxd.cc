@@ -43,19 +43,20 @@ const uint8_t MSG_RXM_SFRBX = 0x13;
 volatile int do_exit = 0; // Flag for process exit on signal
 const long ZMQ_POLL_TIMEOUT = 1000; // In miliseconds
 const int UBLOX_HEADER_SIZE = 6;
+const int UBLOX_CHECKSUM_SIZE = 2;
 const int UBLOX_MAX_MSG_SIZE = 65536;
 uint8_t msg_parse_buf[UBLOX_HEADER_SIZE + UBLOX_MAX_MSG_SIZE];
 size_t bytes_in_parse_buf = 0U;
 
 inline int needed_bytes() {
 	if(bytes_in_parse_buf < UBLOX_HEADER_SIZE)
-		return UBLOX_HEADER_SIZE - bytes_in_parse_buf;
-	return UBLOX_MSG_SIZE(msg_parse_buf) + UBLOX_HEADER_SIZE + 2 - bytes_in_parse_buf;
+		return UBLOX_HEADER_SIZE + UBLOX_CHECKSUM_SIZE - bytes_in_parse_buf;
+	return UBLOX_MSG_SIZE(msg_parse_buf) + UBLOX_HEADER_SIZE + UBLOX_CHECKSUM_SIZE - bytes_in_parse_buf;
 }
 
 inline bool valid_cheksum() {
 	uint8_t ck_a = 0, ck_b = 0;
-	for(int i = 2; i < bytes_in_parse_buf - 2;i++) {
+	for(int i = 2; i < bytes_in_parse_buf - UBLOX_CHECKSUM_SIZE;i++) {
 		ck_a = (ck_a + msg_parse_buf[i]) & 0xFF;
 		ck_b = (ck_b + ck_a) & 0xFF;
 	}
@@ -71,7 +72,9 @@ inline bool valid_cheksum() {
 }
 
 inline bool valid() {
-	return bytes_in_parse_buf >= 8 && valid_cheksum();
+	return bytes_in_parse_buf >= UBLOX_HEADER_SIZE + UBLOX_CHECKSUM_SIZE && 
+		needed_bytes() == 0 &&
+		valid_cheksum();
 }
 
 bool valid_so_far() {
@@ -110,7 +113,7 @@ size_t msg_parser_handle_data(const uint8_t *incoming_data, uint16_t incoming_da
 
 	if(bytes_in_parse_buf < UBLOX_HEADER_SIZE)
 		return bytes_consumed;
-	if(bytes_in_parse_buf == UBLOX_MSG_SIZE(msg_parse_buf) + UBLOX_HEADER_SIZE + 2) {
+	if(valid()) {
 		LOGD("ublox msg total size: %u", bytes_in_parse_buf);
 		if(msg_class() == CLASS_NAV) {
 			if(msg_id() == MSG_NAV_PVT) {
