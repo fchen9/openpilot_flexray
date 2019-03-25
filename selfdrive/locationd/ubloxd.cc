@@ -38,6 +38,7 @@ const uint8_t MSG_NAV_PVT = 0x7;
 
 // RXM messages
 const uint8_t MSG_RXM_RAW = 0x15;
+const uint8_t MSG_RXM_SFRBX = 0x13;
 
 volatile int do_exit = 0; // Flag for process exit on signal
 const long ZMQ_POLL_TIMEOUT = 1000; // In miliseconds
@@ -88,6 +89,14 @@ bool valid_so_far() {
 	return true;
 }
 
+inline uint8_t msg_class() {
+	return msg_parse_buf[2];
+}
+
+inline uint8_t msg_id() {
+	return msg_parse_buf[3];
+}
+
 size_t msg_parser_handle_data(const uint8_t *incoming_data, uint16_t incoming_data_len, void *publisher) {
 	size_t bytes_consumed = min(needed_bytes(), incoming_data_len );
 	memcpy(msg_parse_buf + bytes_in_parse_buf, incoming_data, bytes_consumed);
@@ -101,9 +110,24 @@ size_t msg_parser_handle_data(const uint8_t *incoming_data, uint16_t incoming_da
 
 	if(bytes_in_parse_buf < UBLOX_HEADER_SIZE)
 		return bytes_consumed;
-	LOGD("ublox msg size: %u", UBLOX_MSG_SIZE(msg_parse_buf));
 	if(bytes_in_parse_buf == UBLOX_MSG_SIZE(msg_parse_buf) + UBLOX_HEADER_SIZE + 2) {
 		LOGD("ublox msg total size: %u", bytes_in_parse_buf);
+		if(msg_class() == CLASS_NAV) {
+			if(msg_id() == MSG_NAV_PVT) {
+				LOGD("MSG_NAV_PVT");
+			} else
+				LOGW("Unknown nav msg id: 0x%02X", msg_id());
+			
+		} else if(msg_class() == CLASS_RXM) {
+			if(msg_id() == MSG_RXM_RAW) {
+				LOGD("MSG_RXM_RAW");
+			} else if(msg_id() == MSG_RXM_SFRBX) {
+				LOGD("MSG_RXM_SFRBX");
+			} else
+				LOGW("Unknown rxm msg id: 0x%02X", msg_id());
+		} else
+			LOGW("Unknown msg class: 0x%02X", msg_class());
+
 		#if 0
 		capnp::MallocMessageBuilder msg;
 		cereal::Event::Builder event = msg.initRoot<cereal::Event>();
@@ -150,7 +174,6 @@ void ublox_parse_and_send(void *publisher) {
 		cereal::Event::Reader event = cmsg.getRoot<cereal::Event>();
 		const uint8_t *data = event.getUbloxRaw().begin();
 		size_t len = event.getUbloxRaw().size();
-		LOGD("ublox raw data: %u", len);
 		int bytes_consumed = 0;
 		while(bytes_consumed < len && !do_exit)
 			bytes_consumed += msg_parser_handle_data(data + bytes_consumed, len - bytes_consumed, publisher);
