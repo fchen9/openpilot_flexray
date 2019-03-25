@@ -10,7 +10,7 @@
 #include <sys/types.h>
 #include <sys/time.h>
 #include <assert.h>
-#include <algorithm>
+#include <math.h>
 #include <ctime>
 #include <chrono>
 
@@ -138,6 +138,9 @@ void publish_nav_pvt(void *sock) {
 	zmq_send(sock, bytes.begin(), bytes.size(), 0);
 }
 
+inline bool bit_to_bool(uint8_t val, int shifts) {
+	return (val & (1 << shifts)) ? true : false;
+}
 void publish_rxm_raw(void *sock) {
 	rxm_raw_msg *msg = (rxm_raw_msg *)&msg_parse_buf[UBLOX_HEADER_SIZE];
 	if(bytes_in_parse_buf != 
@@ -155,19 +158,31 @@ void publish_rxm_raw(void *sock) {
 	mr.setGpsWeek(msg->week);
 	mr.setLeapSeconds(msg->leapS);
 	mr.setGpsWeek(msg->week);
-	capnp::List<cereal::UbloxGnss::MeasurementReport::Measurement>::Builder mbl;
+	auto mb = mr.initMeasurements(msg->numMeas);
 	for(int8_t i = 0; i < msg->numMeas; i++) {
-		cereal::UbloxGnss::MeasurementReport::Measurement::Builder b(nullptr);
-		b.setSvId(measurements[i].svId);
-		b.setPseudorange(measurements[i].prMes);
-		mbl.setWithCaveats(i, b);
+		mb[i].setSvId(measurements[i].svId);
+		mb[i].setSigId(measurements[i].sigId);
+		mb[i].setPseudorange(measurements[i].prMes);
+		mb[i].setCarrierCycles(measurements[i].cpMes);
+		mb[i].setDoppler(measurements[i].doMes);
+		mb[i].setGnssId(measurements[i].gnssId);
+		mb[i].setGlonassFrequencyIndex(measurements[i].freqId);
+		mb[i].setLocktime(measurements[i].locktime);
+		mb[i].setCno(measurements[i].cno);
+		mb[i].setPseudorangeStdev(0.01*(pow(2, (measurements[i].prStdev & 15)))); // weird scaling, might be wrong
+		mb[i].setCarrierPhaseStdev(0.004*(measurements[i].cpStdev & 15));
+		mb[i].setDopplerStdev(0.002*(pow(2, (measurements[i].doStdev & 15)))); // weird scaling, might be wrong
+		auto ts = mb[i].initTrackingStatus();
+		ts.setPseudorangeValid(bit_to_bool(measurements[i].trkStat, 0));
+		ts.setCarrierPhaseValid(bit_to_bool(measurements[i].trkStat, 1));
+		ts.setHalfCycleValid(bit_to_bool(measurements[i].trkStat, 2));
+		ts.setHalfCycleSubtracted(bit_to_bool(measurements[i].trkStat, 3));
 	}
-	mr.setMeasurements(mbl);
 
 	mr.setNumMeas(msg->numMeas);
 	auto rs = mr.initReceiverStatus();
-	rs.setLeapSecValid(((msg->recStat) & 1) ? true : false);
-	rs.setClkReset(((msg->recStat) & (1 << 2)) ? true : false);
+	rs.setLeapSecValid(bit_to_bool(msg->recStat, 0));
+	rs.setClkReset(bit_to_bool(msg->recStat, 2));
 	auto words = capnp::messageToFlatArray(msg_builder);
 	auto bytes = words.asBytes();
 	zmq_send(sock, bytes.begin(), bytes.size(), 0);
