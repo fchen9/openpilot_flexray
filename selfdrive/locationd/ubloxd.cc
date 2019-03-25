@@ -109,7 +109,7 @@ void publish_gps_location(void *sock, nav_pvt_msg *msg) {
 	capnp::MallocMessageBuilder msg_builder;
 	cereal::Event::Builder event = msg_builder.initRoot<cereal::Event>();
 	event.setLogMonoTime(nanos_since_boot());
-	auto gpsLoc = event.initGpsLocation();
+	auto gpsLoc = event.initGpsLocationExternal();
 	gpsLoc.setSource(cereal::GpsLocationData::SensorSource::EXTERNAL);
 	gpsLoc.setFlags(msg->flags);
 	gpsLoc.setLatitude(msg->lat * 1e-07);
@@ -119,14 +119,14 @@ void publish_gps_location(void *sock, nav_pvt_msg *msg) {
 	gpsLoc.setBearing(msg->headMot * 1e-5);
 	gpsLoc.setAccuracy(msg->hAcc * 1e-03);
 	std::tm timeinfo = std::tm();
-  timeinfo.tm_year = msg->year;
-  timeinfo.tm_mon = msg->month;
+  timeinfo.tm_year = msg->year - 1900;
+  timeinfo.tm_mon = msg->month - 1;
   timeinfo.tm_mday = msg->day;
 	timeinfo.tm_hour = msg->hour;
 	timeinfo.tm_min = msg->min;
 	timeinfo.tm_sec = msg->sec;
-  auto tp = std::chrono::system_clock::from_time_t(std::mktime (&timeinfo));
-	gpsLoc.setTimestamp(tp.time_since_epoch().count() * 1e+03 + msg->nano * 1e-06);
+	std::time_t utc_tt = timegm(&timeinfo);
+	gpsLoc.setTimestamp(utc_tt * 1e+03 + msg->nano * 1e-06);
 	float f[] = { msg->velN * 1e-03f, msg->velE * 1e-03f, msg->velD * 1e-03f };
 	kj::ArrayPtr<const float> ap(&f[0], sizeof(f) / sizeof(f[0]));
 	gpsLoc.setVNED(ap);
@@ -226,9 +226,10 @@ int main() {
   signal(SIGTERM, (sighandler_t) set_do_exit);
   void *context = zmq_ctx_new();
   void *gpsLocationExternal = zmq_socket(context, ZMQ_PUB);
-  zmq_bind(gpsLocationExternal, "tcp://*:8032");
+  zmq_bind(gpsLocationExternal, "tcp://*:9032");
+	//zmq_bind(gpsLocationExternal, "tcp://*:8032");
   void *ubloxGnss = zmq_socket(context, ZMQ_PUB);
-  zmq_bind(ubloxGnss, "tcp://*:8033");
+  //zmq_bind(ubloxGnss, "tcp://*:8033");
 	while(!do_exit) {
 		ublox_parse_and_send(gpsLocationExternal, ubloxGnss);
 	}
