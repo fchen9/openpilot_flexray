@@ -202,7 +202,6 @@ int main() {
   void *publisher = zmq_socket(context, ZMQ_PUB);
   // flexRay = 8066
   zmq_bind(publisher, "tcp://*:8066");
-	// Do connect & recv in main thread
 	while(!do_exit) {
 		ublox_parse_and_send(publisher);
 	}
