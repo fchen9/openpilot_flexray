@@ -11,10 +11,11 @@
 #include <sys/time.h>
 #include <assert.h>
 #include <algorithm>
+#include <ctime>
+#include <chrono>
 
 #include <zmq.h>
 #include <capnp/serialize.h>
-#include "cereal/gen/c/log.capnp.h"
 #include "cereal/gen/cpp/log.capnp.h"
 
 #include "common/params.h"
@@ -103,31 +104,38 @@ inline uint8_t msg_id() {
 	return msg_parse_buf[3];
 }
 
-void model_publish(void* sock) {
-  struct capn rc;
-  capn_init_malloc(&rc);
-  struct capn_segment *cs = capn_root(&rc).seg;
-
-  cereal_GpsLocationData_ptr leadp = cereal_new_GpsLocationData(cs);
-  struct cereal_GpsLocationData leadd = (struct cereal_GpsLocationData){
-    .latitude = 0,
-    .longitude = 0,
-  };
-  cereal_write_GpsLocationData(&leadd, leadp);
-
-  cereal_Event_ptr eventp = cereal_new_Event(cs);
-  struct cereal_Event event = {
-    .logMonoTime = nanos_since_boot(),
-    .which = cereal_Event_gpsLocationExternal,
-    .gpsLocationExternal = leadp,
-  };
-  cereal_write_Event(&event, eventp);
-
-  capn_setp(capn_root(&rc), 0, eventp.p);
-  uint8_t buf[4096];
-  ssize_t rs = capn_write_mem(&rc, buf, sizeof(buf), 0);
-  zmq_send(sock, buf, rs, ZMQ_DONTWAIT);
-  capn_free(&rc);
+void publish_gps_location(void *sock, nav_pvt_msg *msg) {
+	//LOGD("%u-%d-%d %d:%d:%d", msg->year, msg->month, msg->day, msg->hour, msg->min, msg->sec);
+	capnp::MallocMessageBuilder msg_builder;
+	cereal::Event::Builder event = msg_builder.initRoot<cereal::Event>();
+	event.setLogMonoTime(nanos_since_boot());
+	auto gpsLoc = event.initGpsLocation();
+	gpsLoc.setSource(cereal::GpsLocationData::SensorSource::EXTERNAL);
+	gpsLoc.setFlags(msg->flags);
+	gpsLoc.setLatitude(msg->lat * 1e-07);
+	gpsLoc.setLongitude(msg->lon * 1e-07);
+	gpsLoc.setAltitude(msg->height * 1e-03);
+	gpsLoc.setSpeed(msg->gSpeed * 1e-03);
+	gpsLoc.setBearing(msg->headMot * 1e-5);
+	gpsLoc.setAccuracy(msg->hAcc * 1e-03);
+	std::tm timeinfo = std::tm();
+  timeinfo.tm_year = msg->year;
+  timeinfo.tm_mon = msg->month;
+  timeinfo.tm_mday = msg->day;
+	timeinfo.tm_hour = msg->hour;
+	timeinfo.tm_min = msg->min;
+	timeinfo.tm_sec = msg->sec;
+  auto tp = std::chrono::system_clock::from_time_t(std::mktime (&timeinfo));
+	gpsLoc.setTimestamp(tp.time_since_epoch().count() * 1e+03 + msg->nano * 1e-06);
+	float f[] = { msg->velN * 1e-03f, msg->velE * 1e-03f, msg->velD * 1e-03f };
+	kj::ArrayPtr<const float> ap(&f[0], sizeof(f) / sizeof(f[0]));
+	gpsLoc.setVNED(ap);
+	gpsLoc.setVerticalAccuracy(msg->vAcc * 1e-03);
+	gpsLoc.setBearingAccuracy(msg->sAcc * 1e-03);
+	gpsLoc.setSpeedAccuracy(msg->headAcc * 1e-05);
+	auto words = capnp::messageToFlatArray(msg_builder);
+	auto bytes = words.asBytes();
+	zmq_send(sock, bytes.begin(), bytes.size(), 0);
 }
 
 size_t msg_parser_handle_data(const uint8_t *incoming_data, uint16_t incoming_data_len, void *gpsLocationExternal, void *ubloxGnss) {
@@ -148,21 +156,9 @@ size_t msg_parser_handle_data(const uint8_t *incoming_data, uint16_t incoming_da
 		if(msg_class() == CLASS_NAV) {
 			if(msg_id() == MSG_NAV_PVT) {
 				LOGD("MSG_NAV_PVT");
-				nav_pvt_msg *msg = (nav_pvt_msg *)&msg_parse_buf[UBLOX_HEADER_SIZE];
-				LOGD("%u-%d-%d %d:%d:%d", msg->year, msg->month, msg->day, msg->hour, msg->min, msg->sec);
-				#if 0
-				capnp::MallocMessageBuilder msg;
-				cereal::Event::Builder event = msg.initRoot<cereal::Event>();
-				event.setLogMonoTime(nanos_since_boot());
-				auto flexRayData = event.initGps(1);
-				flexRayData[0].setFrameId(EXTRACT_PACKET_FLAG_FRAME_ID(ntohs(pkt_hdr->flags)));
-				auto words = capnp::messageToFlatArray(msg);
-				auto bytes = words.asBytes();
-				zmq_send(publisher, bytes.begin(), bytes.size(), 0);
-				#endif
+				publish_gps_location(gpsLocationExternal, (nav_pvt_msg *)&msg_parse_buf[UBLOX_HEADER_SIZE]);
 			} else
 				LOGW("Unknown nav msg id: 0x%02X", msg_id());
-			
 		} else if(msg_class() == CLASS_RXM) {
 			if(msg_id() == MSG_RXM_RAW) {
 				LOGD("MSG_RXM_RAW");
