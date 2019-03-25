@@ -19,7 +19,9 @@ format_to_c_type = {
 }
 
 def print_c_defs(msg_format, fields):
-  formats = msg_format[1:].split(',')
+  if msg_format[0] == '<':
+    msg_format = msg_format[1:]
+  formats = msg_format.split(',')
   for fmt in formats:
     j = 0
     while j < len(fmt):
@@ -51,27 +53,33 @@ def print_c_defs(msg_format, fields):
         else:
           print('  {} {};'.format(format_to_c_type[f], field))
 
+# python ublox_desc_to_c_struct.py > ublox_msg.h
 if __name__ == "__main__":
+  print("#pragma once\n")
+  print("#include <stdint.h>\n")
   a = [(CLASS_NAV, MSG_NAV_PVT), (CLASS_RXM, MSG_RXM_RAW), (CLASS_RXM, MSG_RXM_SFRBX)]
   for t in a:
     desc = msg_types[t]
-    print(desc.name)
-    print('msg_format', desc.msg_format)
-    print('fields', desc.fields)
-    print('count_field', desc.count_field)
-    print('format2', desc.format2)
-    print('fields2', desc.fields2)
+    if False:
+      print(desc.name)
+      print('msg_format', desc.msg_format)
+      print('fields', desc.fields)
+      print('count_field', desc.count_field)
+      print('format2', desc.format2)
+      print('fields2', desc.fields2)
 
-    print("struct {}_msg {{".format(desc.name.lower()))
+    print('// {}'.format(desc.name))
+    print("typedef struct {")
     print_c_defs(desc.msg_format, desc.fields)
-    print("};")
+    print("}} {}_msg;\n".format(desc.name.lower()))
     if desc.format2:
-      print('optional data size is multiple of {}'.format(struct.calcsize(desc.format2)))
       if not desc.count_field:
-        print('No optional data')
+        print('Error, not count_field!!!')
       elif desc.count_field == '_remaining':
-        print('Optional data count is auto caulated')
+        print('// Extra data count is auto caulated')
       else:
-        print('Optional data count is in {}'.format(desc.count_field))
+        print('// Extra data count is in {}'.format(desc.count_field))
+      print("typedef struct {")
       print_c_defs(desc.format2, desc.fields2)
-
+      print("}} {}_msg_extra;\n".format(desc.name.lower()))
+  

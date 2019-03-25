@@ -20,6 +20,8 @@
 #include "common/swaglog.h"
 #include "common/timing.h"
 
+#include "ublox_msg.h"
+
 #define min(x, y) ((x) <= (y) ? (x) : (y))
 
 #define UBLOX_MSG_SIZE(hdr) (*(uint16_t *)&hdr[4])
@@ -118,6 +120,8 @@ size_t msg_parser_handle_data(const uint8_t *incoming_data, uint16_t incoming_da
 		if(msg_class() == CLASS_NAV) {
 			if(msg_id() == MSG_NAV_PVT) {
 				LOGD("MSG_NAV_PVT");
+				nav_pvt_msg *msg = (nav_pvt_msg *)&msg_parse_buf[UBLOX_HEADER_SIZE];
+				LOGD("%u-%d-%d %d:%d:%d", msg->year, msg->month, msg->day, msg->hour, msg->min, msg->sec);
 			} else
 				LOGW("Unknown nav msg id: 0x%02X", msg_id());
 			
