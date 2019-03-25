@@ -23,7 +23,7 @@ ZMQ_LIBS = -L$(PHONELIBS)/zmq/aarch64/lib \
 
 JSON_FLAGS = -I$(PHONELIBS)/json/src
 
-EXTRA_LIBS = 
+EXTRA_LIBS = -lpthread
 
 ifeq ($(ARCH),x86_64)
 ZMQ_LIBS = -L$(BASEDIR)/external/zmq/lib/ \
