@@ -73,6 +73,6 @@ ubloxd.o: ubloxd.cc
 
 .PHONY: clean
 clean:
-	rm -f flexrayd $(OBJS) $(DEPS)
+	rm -f ubloxd $(OBJS) $(DEPS)
 
 -include $(DEPS)
