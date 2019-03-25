@@ -155,7 +155,14 @@ void publish_rxm_raw(void *sock) {
 	mr.setGpsWeek(msg->week);
 	mr.setLeapSeconds(msg->leapS);
 	mr.setGpsWeek(msg->week);
-	auto m = mr.initMeasurements(msg->numMeas);
+	capnp::List<cereal::UbloxGnss::MeasurementReport::Measurement>::Builder mbl;
+	for(int8_t i = 0; i < msg->numMeas; i++) {
+		cereal::UbloxGnss::MeasurementReport::Measurement::Builder b(nullptr);
+		b.setSvId(measurements[i].svId);
+		b.setPseudorange(measurements[i].prMes);
+		mbl.setWithCaveats(i, b);
+	}
+	mr.setMeasurements(mbl);
 
 	mr.setNumMeas(msg->numMeas);
 	auto rs = mr.initReceiverStatus();
