@@ -69,7 +69,7 @@ if __name__ == "__main__":
       print('fields2', desc.fields2)
 
     print('// {}'.format(desc.name))
-    print("typedef struct {")
+    print("typedef struct __attribute__((packed)) {")
     print_c_defs(desc.msg_format, desc.fields)
     print("}} {}_msg;\n".format(desc.name.lower()))
     if desc.format2:
@@ -79,7 +79,7 @@ if __name__ == "__main__":
         print('// Extra data count is auto caulated')
       else:
         print('// Extra data count is in {}'.format(desc.count_field))
-      print("typedef struct {")
+      print("typedef struct __attribute__((packed)) {")
       print_c_defs(desc.format2, desc.fields2)
-      print("}} {}_msg_extra;\n".format(desc.name.lower()))
+      print("}} {}_msg_extra;".format(desc.name.lower()))
   

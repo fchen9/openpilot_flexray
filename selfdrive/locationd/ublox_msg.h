@@ -3,7 +3,7 @@
 #include <stdint.h>
 
 // NAV_PVT
-typedef struct {
+typedef struct __attribute__((packed)) {
   uint32_t iTOW;
   uint16_t year;
   int8_t month;
@@ -39,7 +39,7 @@ typedef struct {
 } nav_pvt_msg;
 
 // RXM_RAW
-typedef struct {
+typedef struct __attribute__((packed)) {
   double rcvTow;
   uint16_t week;
   int8_t leapS;
@@ -49,7 +49,7 @@ typedef struct {
 } rxm_raw_msg;
 
 // Extra data count is in numMeas
-typedef struct {
+typedef struct __attribute__((packed)) {
   double prMes;
   double cpMes;
   float doMes;
@@ -65,9 +65,8 @@ typedef struct {
   int8_t trkStat;
   int8_t reserved3;
 } rxm_raw_msg_extra;
-
 // RXM_SFRBX
-typedef struct {
+typedef struct __attribute__((packed)) {
   int8_t gnssId;
   int8_t svid;
   int8_t reserved1;
@@ -79,7 +78,6 @@ typedef struct {
 } rxm_sfrbx_msg;
 
 // Extra data count is in numWords
-typedef struct {
+typedef struct __attribute__((packed)) {
   uint32_t dwrd;
 } rxm_sfrbx_msg_extra;
-
