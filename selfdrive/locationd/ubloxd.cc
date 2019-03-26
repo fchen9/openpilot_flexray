@@ -110,7 +110,7 @@ void publish_nav_pvt(void *sock) {
 	cereal::Event::Builder event = msg_builder.initRoot<cereal::Event>();
 	event.setLogMonoTime(nanos_since_boot());
 	auto gpsLoc = event.initGpsLocationExternal();
-	gpsLoc.setSource(cereal::GpsLocationData::SensorSource::EXTERNAL);
+	gpsLoc.setSource(cereal::GpsLocationData::SensorSource::UBLOX);
 	gpsLoc.setFlags(msg->flags);
 	gpsLoc.setLatitude(msg->lat * 1e-07);
 	gpsLoc.setLongitude(msg->lon * 1e-07);
@@ -131,8 +131,8 @@ void publish_nav_pvt(void *sock) {
 	kj::ArrayPtr<const float> ap(&f[0], sizeof(f) / sizeof(f[0]));
 	gpsLoc.setVNED(ap);
 	gpsLoc.setVerticalAccuracy(msg->vAcc * 1e-03);
-	gpsLoc.setBearingAccuracy(msg->sAcc * 1e-03);
-	gpsLoc.setSpeedAccuracy(msg->headAcc * 1e-05);
+	gpsLoc.setSpeedAccuracy(msg->sAcc * 1e-03);
+	gpsLoc.setBearingAccuracy(msg->headAcc * 1e-05);
 	auto words = capnp::messageToFlatArray(msg_builder);
 	auto bytes = words.asBytes();
 	zmq_send(sock, bytes.begin(), bytes.size(), 0);
