@@ -5,8 +5,10 @@ os.environ['BASEDIR'] = BASEDIR
 import zmq
 import numpy as np
 import sys
-from selfdrive.messaging import sub_sock, recv_one_or_none, recv_one
+from selfdrive.messaging import sub_sock, recv_one
 from selfdrive.services import service_list
+
+import inspect
 
 
 def do_test():
@@ -15,6 +17,7 @@ def do_test():
   gps_external_sock_new = sub_sock(context, 9032, conflate=True)
   ublox_gnss_sock = sub_sock(context, service_list['ubloxGnss'].port, conflate=True)
   ublox_gnss_sock_new = sub_sock(context, 9033, conflate=True)
+
 
 
   while True:
@@ -37,12 +40,20 @@ def do_test():
 
     old_gnss = recv_one(ublox_gnss_sock).ubloxGnss
     gnss = recv_one(ublox_gnss_sock_new).ubloxGnss
-    if str(old_gnss) == str(gnss):
-      print('Gnss matched!')
-    else:
-      print('Gnss not matched!')
-      print('gnss old', old_gnss.measurementReport.measurements)
-      print('gnss new', gnss.measurementReport.measurements)
+    if old_gnss.which() == 'measurementReport' and gnss.which() == 'measurementReport':
+      if str(old_gnss.measurementReport) == str(gnss.measurementReport):
+        print('Gnss measurementReport matched!')
+      else:
+        print('Gnss measurementReport mismatched!')
+        print('gnss measurementReport old', old_gnss.measurementReport.measurements)
+        print('gnss measurementReport new', gnss.measurementReport.measurements)
+    elif old_gnss.which() == 'ephemeris' and gnss.which() == 'ephemeris':
+      if str(old_gnss.ephemeris) == str(gnss.ephemeris):
+        print('Gnss ephemeris matched!')
+      else:
+        print('Gnss ephemeris mismatched!')
+        print('gnss ephemeris old', old_gnss.ephemeris)
+        print('gnss ephemeris new', gnss.ephemeris)
 
 
 if __name__ == "__main__":

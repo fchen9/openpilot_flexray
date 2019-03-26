@@ -13,6 +13,8 @@
 #include <math.h>
 #include <ctime>
 #include <chrono>
+#include <map>
+#include <vector>
 
 #include <zmq.h>
 #include <capnp/serialize.h>
@@ -25,8 +27,9 @@
 #include "ublox_msg.h"
 
 #define min(x, y) ((x) <= (y) ? (x) : (y))
-
 #define UBLOX_MSG_SIZE(hdr) (*(uint16_t *)&hdr[4])
+#define GET_FIELD_U(w, nb, pos) (((w) >> (pos)) & ((1<<(nb))-1))
+#define GET_FIELD_S(w, nb, pos) (((int)((w) << (32-(nb)-(pos)))) >> (32-(nb)))
 
 namespace {
 // protocol constants
@@ -51,6 +54,110 @@ const int UBLOX_CHECKSUM_SIZE = 2;
 const int UBLOX_MAX_MSG_SIZE = 65536;
 uint8_t msg_parse_buf[UBLOX_HEADER_SIZE + UBLOX_MAX_MSG_SIZE];
 size_t bytes_in_parse_buf = 0U;
+
+typedef std::map<uint8_t, std::vector<uint32_t>> subframes_map;
+std::map<uint8_t, std::map<uint8_t, subframes_map>> nav_frame_buffer;
+
+class EphemerisData {
+	public:
+		EphemerisData(uint8_t svId, subframes_map subframes) {
+			this->svId = svId;
+			uint32_t week_no = GET_FIELD_U(subframes[1][2+0], 10, 20);
+			uint32_t t_gd = GET_FIELD_S(subframes[1][2+4], 8, 6);
+			uint32_t iodc = (GET_FIELD_U(subframes[1][2+0], 2, 6) << 8) | GET_FIELD_U(
+				subframes[1][2+5], 8, 22);
+
+			uint32_t t_oc = GET_FIELD_U(subframes[1][2+5], 16, 6);
+			uint32_t a_f2 = GET_FIELD_S(subframes[1][2+6], 8, 22);
+			uint32_t a_f1 = GET_FIELD_S(subframes[1][2+6], 16, 6);
+			uint32_t a_f0 = GET_FIELD_S(subframes[1][2+7], 22, 8);
+
+			uint32_t c_rs = GET_FIELD_S(subframes[2][2+0], 16, 6);
+			uint32_t delta_n = GET_FIELD_S(subframes[2][2+1], 16, 14);
+			uint32_t m_0 = (GET_FIELD_S(subframes[2][2+1], 8, 6) << 24) | GET_FIELD_U(
+				subframes[2][2+2], 24, 6);
+			uint32_t c_uc = GET_FIELD_S(subframes[2][2+3], 16, 14);
+			uint32_t e = (GET_FIELD_U(subframes[2][2+3], 8, 6) << 24) | GET_FIELD_U(subframes[2][2+4], 24, 6);
+			uint32_t c_us = GET_FIELD_S(subframes[2][2+5], 16, 14);
+			uint32_t a_powhalf = (GET_FIELD_U(subframes[2][2+5], 8, 6) << 24) | GET_FIELD_U(
+				subframes[2][2+6], 24, 6);
+			uint32_t t_oe = GET_FIELD_U(subframes[2][2+7], 16, 14);
+
+			uint32_t c_ic = GET_FIELD_S(subframes[3][2+0], 16, 14);
+			uint32_t omega_0 = (GET_FIELD_S(subframes[3][2+0], 8, 6) << 24) | GET_FIELD_U(
+				subframes[3][2+1], 24, 6);
+			uint32_t c_is = GET_FIELD_S(subframes[3][2+2], 16, 14);
+			uint32_t i_0 = (GET_FIELD_S(subframes[3][2+2], 8, 6) << 24) | GET_FIELD_U(
+				subframes[3][2+3], 24, 6);
+			uint32_t c_rc = GET_FIELD_S(subframes[3][2+4], 16, 14);
+			uint32_t w = (GET_FIELD_S(subframes[3][2+4], 8, 6) << 24) | GET_FIELD_U(subframes[3][5], 24, 6);
+			uint32_t omega_dot = GET_FIELD_S(subframes[3][2+6], 24, 6);
+			uint32_t idot = GET_FIELD_S(subframes[3][2+7], 14, 8);
+
+			this->_rsvd1 = GET_FIELD_U(subframes[1][2+1], 23, 6);
+			this->_rsvd2 = GET_FIELD_U(subframes[1][2+2], 24, 6);
+			this->_rsvd3 = GET_FIELD_U(subframes[1][2+3], 24, 6);
+			this->_rsvd4 = GET_FIELD_U(subframes[1][2+4], 16, 14);
+			this->aodo = GET_FIELD_U(subframes[2][2+7], 5, 8);
+
+			double gpsPi = 3.1415926535898;
+
+			// now form variables in radians, meters and seconds etc
+			this->Tgd = t_gd * pow(2, -31);
+			this->A = pow(a_powhalf * pow(2, -19), 2.0);
+			this->cic = c_ic * pow(2, -29);
+			this->cis = c_is * pow(2, -29);
+			this->crc = c_rc * pow(2, -5);
+			this->crs = c_rs * pow(2, -5);
+			this->cuc = c_uc * pow(2, -29);
+			this->cus = c_us * pow(2, -29);
+			this->deltaN = delta_n * pow(2, -43) * gpsPi;
+			this->ecc = e * pow(2, -33);
+			this->i0 = i_0 * pow(2, -31) * gpsPi;
+			this->idot = idot * pow(2, -43) * gpsPi;
+			this->M0 = m_0 * pow(2, -31) * gpsPi;
+			this->omega = w * pow(2, -31) * gpsPi;
+			this->omega_dot = omega_dot * pow(2, -43) * gpsPi;
+			this->omega0 = omega_0 * pow(2, -31) * gpsPi;
+			this->toe = t_oe * pow(2, 4);
+
+			this->toc = t_oc * pow(2, 4);
+			this->gpsWeek = week_no;
+			this->af0 = a_f0 * pow(2, -31);
+			this->af1 = a_f1 * pow(2, -43);
+			this->af2 = a_f2 * pow(2, -55);
+
+			uint32_t iode1 = GET_FIELD_U(subframes[2][2+0], 8, 22);
+			uint32_t iode2 = GET_FIELD_U(subframes[3][2+7], 8, 22);
+			this->valid = (iode1 == iode2) && (iode1 == (iodc & 0xff));
+			this->iode = iode1;
+
+			if (GET_FIELD_U(subframes[4][2+0], 6, 22) == 56 &&
+				GET_FIELD_U(subframes[4][2+0], 2, 28) == 1 &&
+				GET_FIELD_U(subframes[5][2+0], 2, 28) == 1) {
+				uint32_t a0 = GET_FIELD_S(subframes[4][2], 8, 14) * pow(2, -30);
+				uint32_t a1 = GET_FIELD_S(subframes[4][2], 8, 6) * pow(2, -27);
+				uint32_t a2 = GET_FIELD_S(subframes[4][3], 8, 22) * pow(2, -24);
+				uint32_t a3 = GET_FIELD_S(subframes[4][3], 8, 14) * pow(2, -24);
+				uint32_t b0 = GET_FIELD_S(subframes[4][3], 8, 6) * pow(2, 11);
+				uint32_t b1 = GET_FIELD_S(subframes[4][4], 8, 22) * pow(2, 14);
+				uint32_t b2 = GET_FIELD_S(subframes[4][4], 8, 14) * pow(2, 16);
+				uint32_t b3 = GET_FIELD_S(subframes[4][4], 8, 6) * pow(2, 16);
+				this->ionoAlpha[0] = a0;this->ionoAlpha[1] = a1;this->ionoAlpha[2] = a2;this->ionoAlpha[3] = a3;
+				this->ionoBeta[0] = b0;this->ionoBeta[1] = b1;this->ionoBeta[2] = b2;this->ionoBeta[3] = b3;
+				this->ionoCoeffsValid = true;
+			} else {
+				this->ionoCoeffsValid = false;
+			}
+		}
+		uint16_t svId;
+		double Tgd, A, cic, cis, crc, crs, cuc, cus, deltaN, ecc, i0, idot, M0, omega, omega_dot, omega0, toe, toc;
+		uint32_t gpsWeek, iode, _rsvd1, _rsvd2, _rsvd3, _rsvd4, aodo;
+		double af0, af1, af2;
+		bool valid;
+		double ionoAlpha[4], ionoBeta[4];
+		bool ionoCoeffsValid;
+};
 
 inline int needed_bytes() {
 	if(bytes_in_parse_buf < UBLOX_HEADER_SIZE)
@@ -141,6 +248,7 @@ void publish_nav_pvt(void *sock) {
 inline bool bit_to_bool(uint8_t val, int shifts) {
 	return (val & (1 << shifts)) ? true : false;
 }
+
 void publish_rxm_raw(void *sock) {
 	rxm_raw_msg *msg = (rxm_raw_msg *)&msg_parse_buf[UBLOX_HEADER_SIZE];
 	if(bytes_in_parse_buf != 
@@ -188,6 +296,69 @@ void publish_rxm_raw(void *sock) {
 	zmq_send(sock, bytes.begin(), bytes.size(), 0);
 }
 
+void publish_rxm_sfrbx(void *sock) {
+	rxm_sfrbx_msg *msg = (rxm_sfrbx_msg *)&msg_parse_buf[UBLOX_HEADER_SIZE];
+	if(bytes_in_parse_buf != 
+		(UBLOX_HEADER_SIZE + sizeof(rxm_sfrbx_msg) + msg->numWords * sizeof(rxm_sfrbx_msg_extra) + UBLOX_CHECKSUM_SIZE)) {
+		LOGD("Invalid sfrbx words size %u, %u, %u, %u", msg->numWords, bytes_in_parse_buf, sizeof(rxm_raw_msg_extra), sizeof(rxm_raw_msg));
+		return;
+	}
+	rxm_sfrbx_msg_extra *measurements = (rxm_sfrbx_msg_extra *)&msg_parse_buf[UBLOX_HEADER_SIZE + sizeof(rxm_sfrbx_msg)];
+	if(msg->gnssId  == 0) {
+    uint8_t subframeId =  GET_FIELD_U(measurements[1].dwrd, 3, 8);
+    std::vector<uint32_t> words;
+    for(int i = 0; i < msg->numWords;i++)
+      words.push_back(measurements[i].dwrd);
+
+    if(subframeId == 1) {
+      nav_frame_buffer[msg->gnssId][msg->svid] = subframes_map();
+      nav_frame_buffer[msg->gnssId][msg->svid][subframeId] = words;
+		} else if(nav_frame_buffer[msg->gnssId][msg->svid].find(subframeId-1) != nav_frame_buffer[msg->gnssId][msg->svid].end())
+      nav_frame_buffer[msg->gnssId][msg->svid][subframeId] = words;
+    
+		if(nav_frame_buffer[msg->gnssId][msg->svid].size() == 5) {
+      EphemerisData ephem_data(msg->svid, nav_frame_buffer[msg->gnssId][msg->svid]);
+			capnp::MallocMessageBuilder msg_builder;
+			cereal::Event::Builder event = msg_builder.initRoot<cereal::Event>();
+			event.setLogMonoTime(nanos_since_boot());
+			auto gnss = event.initUbloxGnss();
+			auto eph = gnss.initEphemeris();
+			eph.setSvId(ephem_data.svId);
+			eph.setToc(ephem_data.toc);
+			eph.setGpsWeek(ephem_data.gpsWeek);
+			eph.setAf0(ephem_data.af0);
+			eph.setAf1(ephem_data.af1);
+			eph.setAf2(ephem_data.af2);
+			eph.setIode(ephem_data.iode);
+			eph.setCrs(ephem_data.crs);
+			eph.setDeltaN(ephem_data.deltaN);
+			eph.setM0(ephem_data.M0);
+			eph.setCuc(ephem_data.cuc);
+			eph.setEcc(ephem_data.ecc);
+			eph.setCus(ephem_data.cus);
+			eph.setA(ephem_data.A);
+			eph.setToe(ephem_data.toe);
+			eph.setCic(ephem_data.cic);
+			eph.setOmega0(ephem_data.omega0);
+			eph.setCis(ephem_data.cis);
+			eph.setI0(ephem_data.i0);
+			eph.setCrc(ephem_data.crc);
+			eph.setOmega(ephem_data.omega);
+			eph.setOmegaDot(ephem_data.omega_dot);
+			eph.setIDot(ephem_data.idot);
+			eph.setTgd(ephem_data.Tgd);
+			eph.setIonoCoeffsValid(ephem_data.ionoCoeffsValid);
+			kj::ArrayPtr<const double> apa(&ephem_data.ionoAlpha[0], sizeof(ephem_data.ionoAlpha) / sizeof(ephem_data.ionoAlpha[0]));
+			eph.setIonoAlpha(apa);
+			kj::ArrayPtr<const double> apb(&ephem_data.ionoBeta[0], sizeof(ephem_data.ionoBeta) / sizeof(ephem_data.ionoBeta[0]));
+			eph.setIonoBeta(apb);
+			auto words = capnp::messageToFlatArray(msg_builder);
+			auto bytes = words.asBytes();
+			zmq_send(sock, bytes.begin(), bytes.size(), 0);
+		}
+	}
+}
+
 size_t msg_parser_handle_data(const uint8_t *incoming_data, uint16_t incoming_data_len, void *gpsLocationExternal, void *ubloxGnss) {
 	size_t bytes_consumed = min(needed_bytes(), incoming_data_len );
 	memcpy(msg_parse_buf + bytes_in_parse_buf, incoming_data, bytes_consumed);
@@ -215,6 +386,7 @@ size_t msg_parser_handle_data(const uint8_t *incoming_data, uint16_t incoming_da
 				publish_rxm_raw(ubloxGnss);
 			} else if(msg_id() == MSG_RXM_SFRBX) {
 				LOGD("MSG_RXM_SFRBX");
+				publish_rxm_sfrbx(ubloxGnss);
 			} else
 				LOGW("Unknown rxm msg id: 0x%02X", msg_id());
 		} else
@@ -235,6 +407,11 @@ int main() {
   LOGW("starting ubloxd");
 	signal(SIGINT, (sighandler_t) set_do_exit);
   signal(SIGTERM, (sighandler_t) set_do_exit);
+
+  nav_frame_buffer[0U] = std::map<uint8_t, subframes_map>();
+  for(int i = 1;i < 33;i++)
+    nav_frame_buffer[0U][i] = subframes_map();
+
   void *context = zmq_ctx_new();
 
   void *gpsLocationExternal = zmq_socket(context, ZMQ_PUB);
