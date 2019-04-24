@@ -1,0 +1,49 @@
+FlexRay parameters decoded from pin3.psdata:
+gNumberOfStaticSlots: 51
+gPayloadLengthStatic: 17
+gdBit 0.1 µs
+pdMicrotick 0.025 µs
+
+Parameters estimated from 20181220-0001 rs pin 3.psdata waveform:
+gdTSSTransmitter: 9
+
+Time interval between last static slot and first dynamic slot 52( gdActionPointOffset or gdMinislotActionPointOffset)
+9 µs / gdMacrotick
+
+Time interval between last static slot 51 and dynamic slot 54,  and no transmission on slot 52, 53
+27 µs = gdActionPointOffset or gdMinislotActionPointOffset + 2 * gdMinislot
+
+Time interval between dynamic slot 53 and dynamic slot 56,  and no transmission on slot 54, 55
+26.8 µs, DTS LOW of slot 53 is 600ns
+
+Time interval between static slots (related to gdActionPointOffset)
+9 µs / gdMacrotick
+
+Length of static slot waveform: 43.2 µs
+aFrameLengthStatic 432 gdBit
+
+aFrameLengthStatic(gdBit) = config['gdTSSTransmitter'] + cdFSS + 80 + config['gPayloadLengthStatic'] * 20 + cdFES
+aFrameLengthStatic(gdBit) = 9 + 2 + 80 + 17 * 20 + 1 = 432
+
+Suppose gdMacrotick is 1 µs/MT
+gdStaticSlot = 2 * config['gdActionPointOffset'] + ceil(((aFrameLengthStatic + cChannelIdleDelimiter) * gdBitMax +
+		config['gdMinPropagationDelay'] + gdMaxPropagationDelay) / (config['gdMacrotick'] * (1 - cClockDeviationMax)))
+gdBitMax = gdBit * (1 + cClockDeviationMax) = 0.1 * (1 + 0.0015) = 0.10015
+
+0.0 < config['gdMinPropagationDelay'] + gdMaxPropagationDelay < 0.5
+
+gdStaticSlot_min = 2 * 9 + ceil(((432 + 11) * 0.10015 + 0) / (1 * 0.9985)) = 63
+gdStaticSlot_max = 2 * 9 + ceil(((432 + 11) * 0.10015 + 0.5) / (1 * 0.9985)) = 63
+So gdStaticSlot is 63
+
+Time interval between dynamic slots (related to gdMinislotActionPointOffset)
+9 µs / gdMacrotick
+
+dynamic trailing sequence:
+slot id 52, payloadlength 4, period of LOW: 600ns
+slot id 64, payloadlength 9, period of LOW: 200ns
+slot id 65, payloadlength 17, period of LOW: 1600ns
+slot id 64, payloadlength 9, period of LOW: 8600ns
+
+
+gdSymbolWindow + gdNIT > 20µs / gdMacrotick
