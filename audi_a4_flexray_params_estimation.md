@@ -1,4 +1,4 @@
-### Flexray cycle parameters
+### Flexray cycle parameters definitions
  - gdCycle: Full cycle time in µs.
  - gMacroPerCycle: The number of macroticks per cycle on the cluster.
  - pMicroPerCycle: The number of microticks per cycle on the node.
@@ -23,8 +23,8 @@ pMicroPerCycle[µT] = round( gdCycle[µs] / pdMicrotick[µs/µT] )
 F = 28
 X = 43
 gdCycle ~= (6.357ms - 1.3575ms) = 5ms 5000µs
-Because pdMicrotick = 0.025µs, so:
-pMicroPerCycle ~= 200000
+pdMicrotick = 0.025µs, so:
+pMicroPerCycle ~= 200000µT
 ```
 
 ### Frame params decoded from picoscope waveform
