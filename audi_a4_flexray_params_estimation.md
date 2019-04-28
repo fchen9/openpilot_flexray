@@ -1,4 +1,33 @@
-### Decoding from picoscope waveform
+### Flexray cycle parameters
+ - gdCycle: Full cycle time in µs.
+ - gMacroPerCycle: The number of macroticks per cycle on the cluster.
+ - pMicroPerCycle: The number of microticks per cycle on the node.
+
+### Flexray timing parameters constraints (defined in flexray spec 2.1)
+```python
+Constraint 17:
+gdMacrotick[µs] = gdCycle[µs] / gMacroPerCycle
+Constraint 18:
+gMacroPerCycle[MT] = gdStaticSlot[MT] * gNumberOfStaticSlots + adActionPointDifference[MT] +
+gdMinislot[MT] * gNumberOfMinislots + gdSymbolWindow[MT] + gdNIT[MT]
+Constraint 19:
+pMicroPerCycle[µT] = round( gdCycle[µs] / pdMicrotick[µs/µT] )
+```
+
+### Cycle parameters estimated from picoscope waveform
+- Suppose the flexray frame id is denoted by F, the cycle count is noted by X, the full cycle time can be estimated by:
+ - gdCycle = （Start time of static frame id F in cycle count X + 1) - (Start time of static frame id F in cycle count X)
+ - According to 20190427-0001_channel-A-B_10ms-div_250MS-s_Trigger-CHB-Rising-3,3V.psdata:
+  - ![](https://i.ibb.co/jb22YQR/full-cycle.png)
+```python  
+F = 28
+X = 43
+gdCycle ~= (6.357ms - 1.3575ms) = 5ms 5000µs
+Because pdMicrotick = 0.025µs, so:
+pMicroPerCycle ~= 200000
+```
+
+### Frame params decoded from picoscope waveform
 FlexRay parameters decoded from pin3.psdata:
 gNumberOfStaticSlots: 51
 gPayloadLengthStatic: 17
