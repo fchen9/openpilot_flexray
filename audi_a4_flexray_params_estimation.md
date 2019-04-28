@@ -4,7 +4,7 @@
  - pMicroPerCycle: The number of microticks per cycle on the node.
 
 ### Flexray timing parameters constraints (defined in flexray spec 2.1)
-```python
+```bash
 Constraint 17:
 gdMacrotick[µs] = gdCycle[µs] / gMacroPerCycle
 Constraint 18:
@@ -19,7 +19,7 @@ pMicroPerCycle[µT] = round( gdCycle[µs] / pdMicrotick[µs/µT] )
  - gdCycle = （Start time of static frame id F in cycle count X + 1) - (Start time of static frame id F in cycle count X)
  - According to 20190427-0001_channel-A-B_10ms-div_250MS-s_Trigger-CHB-Rising-3,3V.psdata:
   - ![](https://i.ibb.co/jb22YQR/full-cycle.png)
-```python  
+```bash  
 F = 28
 X = 43
 gdCycle ~= (6.357ms - 1.3575ms) = 5ms 5000µs
@@ -29,15 +29,15 @@ pMicroPerCycle ~= 200000µT
 
 ### Frame params decoded from picoscope waveform
 FlexRay parameters decoded from pin3.psdata:
-```python
+```bash
 gNumberOfStaticSlots: 51
 gPayloadLengthStatic: 17
 gdBit 0.1 µs
 pdMicrotick 0.025 µs
-```python
+```
 
 Parameters estimated from 20181220-0001 rs pin 3.psdata waveform:
-```python
+```bash
 gdTSSTransmitter: 9
 ```
 
