@@ -29,13 +29,17 @@ pMicroPerCycle ~= 200000
 
 ### Frame params decoded from picoscope waveform
 FlexRay parameters decoded from pin3.psdata:
+```python
 gNumberOfStaticSlots: 51
 gPayloadLengthStatic: 17
 gdBit 0.1 µs
 pdMicrotick 0.025 µs
+```python
 
 Parameters estimated from 20181220-0001 rs pin 3.psdata waveform:
+```python
 gdTSSTransmitter: 9
+```
 
 Time interval between last static slot and first dynamic slot 52( gdActionPointOffset or gdMinislotActionPointOffset)
 9 µs / gdMacrotick
