@@ -33,9 +33,8 @@ between cdCASRxLowMin and gdCASRxLowMax is detected.
  - The error occured at the last stage of startup: "POC:integration consistency check", after startup frames pairs have been received successfully. 
  - Clock correction failed because the FlexRay CC received more than one MTS during symbol window segment.
  - Both TSS and MTS are LOW bits, so this error means the LOW bits received during symbol window is too long.
- - Possible reasons of this error: 
-  - Incorrect gdTSSTransmitter
-  - The sum of segments durations before symbol window is too large: gdStaticSlot[MT] * gNumberOfStaticSlots + adActionPointDifference[MT] + gdMinislot[MT] * gNumberOfMinislots
+
+#### Timing Constraints
 ```bash 
 Constraint 18:
 gMacroPerCycle[MT] = gdStaticSlot[MT] * gNumberOfStaticSlots + adActionPointDifference[MT] + gdMinislot[MT] * gNumberOfMinislots + gdSymbolWindow[MT] + gdNIT[MT]
