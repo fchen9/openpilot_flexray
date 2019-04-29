@@ -40,3 +40,10 @@ between cdCASRxLowMin and gdCASRxLowMax is detected.
 Constraint 18:
 gMacroPerCycle[MT] = gdStaticSlot[MT] * gNumberOfStaticSlots + adActionPointDifference[MT] + gdMinislot[MT] * gNumberOfMinislots + gdSymbolWindow[MT] + gdNIT[MT]
 ```
+```bash
+Constraint 16:
+gdSymbolWindow[MT] = 2 * gdActionPointOffset[MT] + ceil( ((gdTSSTransmitter[gdBit] + cdCAS[gdBit] +
+cChannelIdleDelimiter[gdBit]) * gdBitMax[µs/gdBit] + dBDRxai[µs] +
+gdMinPropagationDelay[µs] + gdMaxPropagationDelay[µs]) /
+(gdMacrotick[µs/MT] * (1 - cClockDeviationMax)) )
+```
