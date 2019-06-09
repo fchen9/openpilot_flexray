@@ -35,33 +35,36 @@ class Connection:
     self.sock = None
     self.fr_config = fr_config
     self.frame_id_to_tx_msg_buf_idx = map_frame_id_to_tx_msg_buf_idx(fr_config)
-    self.health_thd = HealthThd(self)
+    self.health_thd = None
     self.send_lock = threading.Lock()
     self.read_buf = b''
 
-  def connect(self):
+  def connect(self, addr=ADAPTER_IP_ADDR, port=ADAPTER_TCP_PORT):
     self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     self.sock.setblocking(0)
     try:
-      self.sock.connect((ADAPTER_IP_ADDR, ADAPTER_TCP_PORT))
+      self.sock.connect((addr, port))
     except BlockingIOError:
       pass
 
   def is_connected(self):
-    readables, _, _ = select([self.sock], [], [], 0.)
-    if len(readables) <= 0:
+    _, writables, _ = select([], [self.sock], [], 0.)
+    if len(writables) <= 0:
       return False
     self.start_driver()
     return True
 
   def start_driver(self):
     self.send_packet(PACKET_TYPE_START_DRIVER, config_to_c_struct(self.fr_config))
+    self.health_thd = HealthThd(self)
     self.health_thd.start()
 
   def close(self):
-    self.health_thd.stop()
-    self.health_thd.join()
-    self.sock.close()
+    if self.health_thd:
+      self.health_thd.stop()
+      self.health_thd.join()
+    if self.sock:
+      self.sock.close()
     self.read_buf = b''
 
   def send_all(self, data):

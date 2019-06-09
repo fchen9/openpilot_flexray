@@ -1095,7 +1095,7 @@ class FlexRayGUI(QWidget):
     def on_connected(self, conn):
         self.conn = conn
         self.recv_packets_thread = ReceivePacketsThread(
-            conn, self.on_frame_received, self.on_sock_disconnect, self.on_recv_pkt_thd_exception, self.on_joined_cluster,
+            conn, self.on_frame_received, self.on_recv_thread_exit, self.on_recv_pkt_thd_exception, self.on_joined_cluster,
             self.on_disconnected_from_cluster, self.on_join_cluster_failed, self.on_fatal_error, self.on_status_data)
         self.recv_packets_thread.start()
         self.connect_btn.setText('Disconnect')
@@ -1115,7 +1115,7 @@ class FlexRayGUI(QWidget):
     def on_connect_progress(self, progress_text):
         self.add_log(progress_text)
 
-    def on_sock_disconnect(self):
+    def on_recv_thread_exit(self):
         if self.timer.isActive():
             self.timer.stop()
         self.recv_packets_thread.wait()
