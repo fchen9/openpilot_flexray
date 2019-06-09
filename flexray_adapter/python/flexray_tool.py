@@ -163,25 +163,38 @@ def save_history_fr_config_files(history_files):
 
 
 class ConnectThread(QThread):
-    _connected_signal = pyqtSignal(Connection)
-    _connect_failed_signal = pyqtSignal('QString')
+  _connected_signal = pyqtSignal(Connection)
+  _connect_failed_signal = pyqtSignal('QString')
+  _connect_progress_signal = pyqtSignal('QString')
 
-    def __init__(self, on_connected, on_connect_failed, config):
-        QThread.__init__(self)
-        self._connected_signal.connect(on_connected)
-        self._connect_failed_signal.connect(on_connect_failed)
-        self._config = config
+  def __init__(self, on_connected, on_connect_failed, on_connect_progress, config):
+    QThread.__init__(self)
+    self._connected_signal.connect(on_connected)
+    self._connect_failed_signal.connect(on_connect_failed)
+    self._connect_progress_signal.connect(on_connect_progress)
+    self._config = config
+    self.conn = None
+    self.wait_timeout = 5000.  #milisecs
+    self.elapsed = 0.
+    self.interval = 100.
 
-    def __del__(self):
-        self.wait()
+  def __del__(self):
+    self.wait()
 
-    def run(self):
-        conn = Connection(self._config)
-        try:
-            conn.connect()
-            self._connected_signal.emit(conn)
-        except Exception as e:
-            self._connect_failed_signal.emit('Connect failed: ' + str(e))
+  def run(self):
+    self.conn = Connection(self._config)
+    try:
+      self.conn.connect()
+      while self.elapsed < self.wait_timeout:
+        if self.conn.is_connected():
+          self._connected_signal.emit(self.conn)
+          return
+        self._connect_progress_signal.emit('Connecting, {:.1f} secs'.format(self.elapsed / 1000.))
+        self.elapsed += self.interval
+        time.sleep(self.interval / 1000.)
+      self._connect_failed_signal.emit('Connect timeout')
+    except Exception as e:
+      self._connect_failed_signal.emit('Connect exception: ' + str(e))
 
 
 class ReceivePacketsThread(QThread):
@@ -1068,7 +1081,7 @@ class FlexRayGUI(QWidget):
                 self.add_log(t)
             self.status_label_left.setText('Connecting...')
             self.connect_btn.setEnabled(False)
-            ConnectThread(self.on_connected, self.on_connect_failed, self.cur_config).start()
+            ConnectThread(self.on_connected, self.on_connect_failed, self.on_connect_progress, self.cur_config).start()
 
         else:
             self.recv_packets_thread.stop()
@@ -1098,6 +1111,9 @@ class FlexRayGUI(QWidget):
         self.status_label_left.setStyleSheet(self.disconnected_text_style)
         self.connect_btn.setText('Join into FlexRay network')
         self.connect_btn.setEnabled(True)
+
+    def on_connect_progress(self, progress_text):
+        self.add_log(progress_text)
 
     def on_sock_disconnect(self):
         if self.timer.isActive():

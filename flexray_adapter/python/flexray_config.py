@@ -225,10 +225,10 @@ def verify_config(config):
     pSamplesPerMicrotick_values = [2, 1, 1, 2]
     gdSampleClockPeriod_values = [12.5, 25.0, 50.0, 12.5]
     gdBit = cSamplesPerBit * (gdSampleClockPeriod_values[config['BIT_RATE']] / 1000.0)
-    result.append('gdBit {} µs'.format(gdBit))
+    result.append('gdBit {} us'.format(gdBit))
     gdBitMax = gdBit * (1 + cClockDeviationMax)
     pdMicrotick = pdMicrotick_values[config['BIT_RATE']] / 1000.0
-    result.append('pdMicrotick {} µs'.format(pdMicrotick))
+    result.append('pdMicrotick {} us'.format(pdMicrotick))
 
     # Constraint 6
     gdMacrotick_min = cMicroPerMacroNomMin * pdMicrotick
@@ -244,10 +244,10 @@ def verify_config(config):
     result.append('gMacroPerCycle {} MT'.format(gMacroPerCycle))
     # Constraint 17:
     gdCycle = gMacroPerCycle * config['gdMacrotick']
-    result.append('gdCycle {} µs'.format(gdCycle))
+    result.append('gdCycle {} us'.format(gdCycle))
     if gdCycle > cdCycleMax:
         return False, 'gdCycle should not be greater than {}, but we got {}'.format(cdCycleMax, gdCycle)
-    result.append('gdMacrotick {} µs'.format(config['gdMacrotick']))
+    result.append('gdMacrotick {} us'.format(config['gdMacrotick']))
     # Constraint 19
     pMicroPerCycle = round(gdCycle / pdMicrotick)
     if config['pMicroPerCycle'] != pMicroPerCycle:
