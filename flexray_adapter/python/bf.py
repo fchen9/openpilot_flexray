@@ -214,6 +214,7 @@ class BruteForceGUI(QWidget):
       self.elapsed += 100.
       self.connect_timer.start(100.)
 
+  # Step 1, Choose a flexray config file
   def launch_connect_dialogue(self):
     if not self.connected:
       connect_dlg = ConnectOrConfigDialog(self.cur_config, mode='connect')
@@ -241,6 +242,7 @@ class BruteForceGUI(QWidget):
     else:
       self.connect_btn.setEnabled(True)
 
+  # Step 2, Generate a config by call bf_algo1.next, then connect to devkit.
   def start_connecting(self):
     if not self.bf_algo1:
       self.connect_btn.setEnabled(True)
@@ -262,11 +264,13 @@ class BruteForceGUI(QWidget):
   def on_connect_progress(self, progress_text):
     self.add_log(progress_text)
 
+  # Step 3, after tcp connection established and config sent to devkit, wait join cluster result.
   def on_connected(self):
     self.recv_packets_thread = ReceivePacketsThread(
       self.conn, self.on_frame_received, self.on_recv_pkt_thread_exit, self.on_recv_pkt_thd_exception, self.on_joined_cluster,
       self.on_disconnected_from_cluster, self.on_join_cluster_failed, self.on_fatal_error, self.on_status_data)
     self.connected = True
+    # Sometimes joining cluster will just timeout without any error, so we schedule a timer for this situation.
     self.join_cluster_timer.start(self.args.timeout)
     self.recv_packets_thread.start()
     self.cancel_btn.setEnabled(True)
@@ -274,6 +278,7 @@ class BruteForceGUI(QWidget):
     self.status_label_left.setStyleSheet(self.connected_text_style)
     self.status_label_right.setText('   Joining cluster...   ')
 
+  # Handle TCP connection error
   def on_connect_failed(self, e):
     self.conn.close()
     self.add_log(e)
@@ -283,6 +288,7 @@ class BruteForceGUI(QWidget):
     self.connect_btn.setText('Choose config and Start brute-force')
     self.connect_btn.setEnabled(True)
 
+  # After joining cluster failed or timeout, recv packet thread will exit and this function will be called.
   def on_recv_pkt_thread_exit(self):
     if self.timer.isActive():
       self.timer.stop()
@@ -300,12 +306,13 @@ class BruteForceGUI(QWidget):
     if self.existing:
       self.close()  # closeEVent will be called again
       return
-    # Retry connecting with another param
+    # Retry joining cluster with another set of params
     self.start_connecting()
 
   def on_recv_pkt_thd_exception(self, e):
     self.add_log(datetime.now().strftime('%H:%M:%S.%f')[:-3] + ' ' + e)
 
+  # Joining cluster succeeded
   def on_joined_cluster(self):
     self.status_label_right.setText('   Connected   ')
     self.status_label_right.setStyleSheet(self.connected_text_style)
@@ -317,6 +324,7 @@ class BruteForceGUI(QWidget):
     mb = QMessageBox(QMessageBox.Information, '', "Join cluster succeeded.")
     mb.exec()
 
+  # Joining cluster failed.
   def on_join_cluster_failed(self):
     self.add_log(datetime.now().strftime('%H:%M:%S.%f')[:-3] + ' Join cluster failed, please check the configuration')
     self.status_label_right.setText('   Join cluster failed   ')
@@ -345,6 +353,8 @@ class BruteForceGUI(QWidget):
 
   def on_status_data(self, text):
     self.detail_status.setText(text)
+    for t in text.split('\n'):
+      self.add_log(t)
 
   def update_statistics_label(self):
     if self.tx_bps > 1000:
@@ -378,11 +388,11 @@ def get_arg_parser():
     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
   parser.add_argument("--addr", nargs="?", default=ADAPTER_IP_ADDR,
-                      help="IP address of flexray adapter")
+                      help="IP address of flexray adapter.")
   parser.add_argument("--port", nargs="?", default=ADAPTER_TCP_PORT,
-                      help="Listen port of flexray adapter")
+                      help="Listen port of flexray adapter.")
   parser.add_argument("--timeout", nargs="?", type=float, default=2000.,
-                      help="Joining cluster timeout")
+                      help="Wait timeout for joining cluster.")
   return parser
 
 
