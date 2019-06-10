@@ -5,20 +5,34 @@ import sys
 import time
 import argparse
 import copy
+import math
 from datetime import datetime
 from PyQt5.QtWidgets import (
-    QWidget, QGroupBox, QPushButton, QMessageBox, QVBoxLayout, QHeaderView, QDoubleSpinBox,
-    QSplitter, QHBoxLayout, QLabel, QScrollArea, QListWidget, QFormLayout, QCheckBox, QProgressDialog,
-    QDialogButtonBox, QComboBox, QSpinBox, QDialog, QTabWidget, QLineEdit, QGridLayout,
-    QTableWidget, QTableWidgetItem, QApplication, QStyle, QListWidgetItem, QRadioButton, QFileDialog)
-from PyQt5.QtCore import Qt, QThread, pyqtSignal, QTimer
+    QWidget, QGroupBox, QPushButton, QMessageBox, QVBoxLayout, QSplitter, QHBoxLayout, QLabel, QListWidget,
+    QDialog, QGridLayout, QApplication, QStyle)
+from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QIcon
 from flexray_config import (default_fr_config, verify_config, verify_config_format)
 from flexray_tool import (ReceivePacketsThread, ConnectOrConfigDialog)
 from tcp_interface import Connection, ADAPTER_IP_ADDR, ADAPTER_TCP_PORT
 from constants import *
 
-class FlexrayParamsGenerator:
+
+def factors(n):
+  results = set()
+  for i in range(1, int(math.sqrt(n)) + 1):
+    if n % i == 0:
+      results.add(i)
+      results.add(int(n / i))
+  return results
+
+# Brute-froce algorthm for finding out the correct length of dynamic segment(gdMinislot * gNumberOfMinislots).
+# Based on Constraint 18 equation.
+# 1) Assume we already have the correct values  of gMacroPerCycle, gdStaticSlot, gNumberOfStaticSlots.
+# 2) Assume gdSymbolWindow is zero.
+# 3) Try all possible values of gdNIT, calculate the value of gdMinislot * gNumberOfMinislots.
+# 4) Return a valid pair of gdMinislot and gNumberOfMinislots
+class BFAlgo1:
   def __init__(self, config):
     # Initial config
     self.config = config
@@ -29,27 +43,59 @@ class FlexrayParamsGenerator:
     else:
         adActionPointDifference = self.config['gdActionPointOffset'] - self.config['gdMiniSlotActionPointOffset']
     # Constraint 18:
-    gMacroPerCycle = self.config['gdStaticSlot'] * self.config['gNumberOfStaticSlots'] + adActionPointDifference + \
+    self.gMacroPerCycle = self.config['gdStaticSlot'] * self.config['gNumberOfStaticSlots'] + adActionPointDifference + \
                      self.config['gdMinislot'] * self.config['gNumberOfMinislots'] + self.config['gdSymbolWindow'] + \
                      self.config['gdNIT']
-    gdCycle = gMacroPerCycle * self.config['gdMacrotick']
-    result.append('gdCycle {} us'.format(gdCycle))
-
+    # gdSymbolWindow is in range [0, 162]
+    # gdMiniSlotActionPointOffset is in range [1, 31]
+    # gdActionPointOffset is in range [1, 63]
+    # gdNIT is in range [2, 15978]
+    # Start from minimum value of gdNIT
+    self.gdNIT = 2
+    # Assume gdSymbolWindow is zero
     self.gdSymbolWindow = 0
 
-  def next(self):
-    # Try next valid config
+  def caclulate_params(self, log_func):
+    # Apparently gNumberOfMinislots of AUDI A4 is not zero.
+    if (self.config['gdActionPointOffset'] <= self.config['gdMiniSlotActionPointOffset'] or self.config[
+      'gNumberOfMinislots'] == 0):
+      adActionPointDifference = 0
+    else:
+      adActionPointDifference = self.config['gdActionPointOffset'] - self.config['gdMiniSlotActionPointOffset']
+    # Constraint 18
+    diff = self.gMacroPerCycle - self.config['gdStaticSlot'] * self.config['gNumberOfStaticSlots'] - \
+           adActionPointDifference - self.gdSymbolWindow - self.gdNIT
+    # diff = gNumberOfMinislots * gdMinislot
+    # gNumberOfMinislots is in range [0, 7988]
+    # gdMiniSlot is in ange [2, 63]
+    for f in factors(diff):
+      if 2 <= f <= 63 and 0 < (diff / f) <= 7988:
+        return f, int(diff / f)
+    log_func('Can not find valid params for diff {}, gdNIT: {}'.format(diff, self.gdNIT))
+    return 0, 0
+
+  def next(self, log_func):
+    # Increase gdNIT until find valid minislot config
+    while self.gdNIT < 15978:
+      gdMinislot, gNumberOfMinislots = self.caclulate_params(log_func)
+      if gdMinislot != 0 and gNumberOfMinislots != 0:
+          break
+      self.gdNIT += 1
+    if self.gdNIT >= 15978:
+      return None
+    self.cur_config['gdMinislot'] = gdMinislot
+    self.cur_config['gNumberOfMinislots'] = gNumberOfMinislots
+    self.cur_config['gdNIT'] = self.gdNIT
     self.cur_config['gdSymbolWindow'] = self.gdSymbolWindow
+    self.gdNIT += 1
     return self.cur_config
 
-  def finished(self):
-    if self.gdSymbolWindow == 128:
-      return True
-    self.gdSymbolWindow += 1
-    return False
-
   def print_config(self):
-    return 'gdSymbolWindow: {}'.format(self.config['gdSymbolWindow'])
+    r = 'gdNIT: {}'.format(self.cur_config['gdNIT'])
+    r += ', gNumberOfMinislots: {}'.format(self.cur_config['gNumberOfMinislots'])
+    r += ', gdMinislot: {}'.format(self.cur_config['gdMinislot'])
+    return r
+
 
 class BruteForceGUI(QWidget):
   def __init__(self, args):
@@ -59,6 +105,9 @@ class BruteForceGUI(QWidget):
     self.elapsed = 0.
     self.timer = QTimer()
     self.timer.timeout.connect(self.on_timer)
+    self.connect_timer = QTimer()
+    self.connect_timer.timeout.connect(self.on_connect_timer)
+    self.connect_timer.setSingleShot(True)
     self.recv_packets_thread = None
     self.conn = None
     self.connected = False
@@ -69,12 +118,12 @@ class BruteForceGUI(QWidget):
     self.join_cluster_timer = QTimer()
     self.join_cluster_timer.timeout.connect(self.on_join_cluster_timeout)
     self.join_cluster_timer.setSingleShot(True)
-    self.params_generator = None
+    self.bf_algo1 = None
     self.existing = False
 
     self.connect_btn = QPushButton("&Start brute-force...")
     self.connect_btn.setFixedWidth(200)
-    self.connect_btn.clicked.connect(self.connect_or_disconnect)
+    self.connect_btn.clicked.connect(self.launch_connect_dialogue)
     self.cancel_btn = QPushButton("&Cancel")
     self.cancel_btn.setFixedWidth(200)
     self.cancel_btn.setEnabled(False)
@@ -143,6 +192,8 @@ class BruteForceGUI(QWidget):
       self.existing = True
       ev.ignore()
     else:
+      if self.connect_timer.isActive():
+        self.connect_timer.stop()
       ev.accept()
 
   def add_log(self, t):
@@ -153,31 +204,36 @@ class BruteForceGUI(QWidget):
 
   def on_connect_timer(self):
     if self.conn.is_connected():
+      self.connect_timer.stop()
       self.on_connected()
       return
     elif self.elapsed >= 5000.:
+      self.connect_timer.stop()
       self.on_connect_failed('Connect to {}:{} timeout'.format(self.args.addr, self.args.port))
     else:
       self.elapsed += 100.
-      self.timer.singleShot(100., self.on_connect_timer)
+      self.connect_timer.start(100.)
 
-  def connect_or_disconnect(self):
+  def launch_connect_dialogue(self):
     if not self.connected:
       connect_dlg = ConnectOrConfigDialog(self.cur_config, mode='connect')
       r = connect_dlg.exec()
       if r != QDialog.Accepted:
         return
       self.cur_config = connect_dlg.cur_config
-      self.params_generator = FlexrayParamsGenerator(self.cur_config)
+      self.add_log('Config file loaded: {}'.format(connect_dlg.cur_config_file))
+      self.bf_algo1 = BFAlgo1(self.cur_config)
       for t in connect_dlg.verify_result:
         self.add_log(t)
       self.start_connecting()
-    else:
+
+  def disconnect(self):
+    if self.connected:
       self.recv_packets_thread.stop()
       self.connect_btn.setEnabled(False)
 
   def cancel_bruteforce(self):
-    self.params_generator = None
+    self.bf_algo1 = None
     self.cancel_btn.setEnabled(False)
     if self.connected:
       self.recv_packets_thread.stop()
@@ -186,15 +242,22 @@ class BruteForceGUI(QWidget):
       self.connect_btn.setEnabled(True)
 
   def start_connecting(self):
-    if not self.params_generator:
+    if not self.bf_algo1:
       self.connect_btn.setEnabled(True)
       return
+    config = self.bf_algo1.next(self.add_log)
+    if not config:
+      self.add_log('Brute-force finished.')
+      self.connect_btn.setEnabled(True)
+      self.cancel_btn.setEnabled(False)
+      return
+    self.add_log('Try params: {}'.format(self.bf_algo1.print_config()))
     self.status_label_left.setText('Connecting...')
     self.connect_btn.setEnabled(False)
-    self.conn = Connection(self.params_generator.next())
+    self.conn = Connection(config)
     self.conn.connect(addr=args.addr, port=args.port)
     self.elapsed = 0.
-    self.timer.singleShot(100., self.on_connect_timer)
+    self.connect_timer.start(100.)
 
   def on_connect_progress(self, progress_text):
     self.add_log(progress_text)
@@ -237,12 +300,8 @@ class BruteForceGUI(QWidget):
     if self.existing:
       self.close()  # closeEVent will be called again
       return
-    # Retry
-    if True:
-      self.start_connecting()
-    else:
-      self.connect_btn.setText('Choose config and start brute-force')
-      self.connect_btn.setEnabled(True)
+    # Retry connecting with another param
+    self.start_connecting()
 
   def on_recv_pkt_thd_exception(self, e):
     self.add_log(datetime.now().strftime('%H:%M:%S.%f')[:-3] + ' ' + e)
@@ -253,7 +312,8 @@ class BruteForceGUI(QWidget):
     self.add_log(datetime.now().strftime('%H:%M:%S.%f')[:-3] + ' Joined into cluster, sniffing on FlexRay bus...')
     if self.join_cluster_timer.isActive():
       self.join_cluster_timer.stop()
-    self.add_log(self.params_generator.print_config())
+    self.add_log(self.bf_algo1.print_config())
+    self.timer.start(1000)
     mb = QMessageBox(QMessageBox.Information, '', "Join cluster succeeded.")
     mb.exec()
 
@@ -263,12 +323,14 @@ class BruteForceGUI(QWidget):
     self.status_label_right.setStyleSheet(self.error_text_style)
     if self.join_cluster_timer.isActive():
       self.join_cluster_timer.stop()
-    self.connect_or_disconnect()
+    self.disconnect()
 
   def on_disconnected_from_cluster(self):
     self.status_label_right.setText('   Disconnected   ')
     self.status_label_right.setStyleSheet(self.error_text_style)
     self.add_log(datetime.now().strftime('%H:%M:%S.%f')[:-3] + ' Disconnected from cluster, please check the FlexRay cable')
+    if self.time.isActive():
+      self.timer.stop()
 
   def on_fatal_error(self):
     self.status_label_right.setText('   Fatal Error   ')
@@ -308,7 +370,7 @@ class BruteForceGUI(QWidget):
 
   def on_join_cluster_timeout(self):
     self.add_log('Join cluster timeout.')
-    self.connect_or_disconnect()
+    self.disconnect()
 
 def get_arg_parser():
   parser = argparse.ArgumentParser(

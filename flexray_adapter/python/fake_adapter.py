@@ -56,7 +56,7 @@ if __name__ == '__main__':
     print('Listening...')
     conn, addr = s.accept()
     conn.setblocking(0)
-    sent_result = False
+    sent_result = True
     while True:
       if not receive_packet(conn, on_packet_received):
         break

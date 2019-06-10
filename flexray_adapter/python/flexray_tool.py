@@ -621,6 +621,7 @@ class ConnectOrConfigDialog(QDialog):
             for k in missed_keys:
                 c[k] = default_fr_config[k]
         self.cur_config = c
+        self.cur_config_file = path
         self.update_form_fields()
         self.show_progress_dlg('Loaded config: {}'.format(os.path.basename(path)))
         return True
@@ -974,6 +975,7 @@ class FlexRayGUI(QWidget):
         self.send_frame_thread = None
         self.conn = None
         self.cur_config = default_fr_config
+        self.cur_config_file = ''
         self.send_frame_dlg = None
         self.tx_frames = self.tx_bytes = self.tx_bps = self.tx_bytes_within_this_second = 0
         self.rx_frames = self.rx_bytes = self.rx_bps = self.rx_bytes_within_this_second = 0
