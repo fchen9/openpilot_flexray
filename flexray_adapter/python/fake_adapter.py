@@ -34,6 +34,9 @@ def receive_packet(conn, on_packet_received):
   except ConnectionResetError:
     print('Peer reset the connection.')
     return False
+  except ConnectionAbortedError:
+    print('Connection aborted.')
+    return False
   return True
 
 def on_packet_received(pkt_type, frame_id, payload):
@@ -61,7 +64,7 @@ if __name__ == '__main__':
         send_packet(conn, PACKET_TYPE_FLEXRAY_JOIN_CLUSTER_FAILED, b'')
         print('Send fake join cluster failed packet.')
         sent_result = True
-      if not sent_result and random.randint(0, 11) % 10 == 0:
+      if not sent_result and random.randint(0, 21) % 20 == 0:
         send_packet(conn, PACKET_TYPE_FLEXRAY_JOINED_CLUSTER, b'')
         print('Send fake join cluster succeeded packet.')
         sent_result = True

@@ -4,6 +4,7 @@ import os
 import sys
 import time
 import argparse
+import copy
 from datetime import datetime
 from PyQt5.QtWidgets import (
     QWidget, QGroupBox, QPushButton, QMessageBox, QVBoxLayout, QHeaderView, QDoubleSpinBox,
@@ -21,12 +22,25 @@ class FlexrayParamsGenerator:
   def __init__(self, config):
     # Initial config
     self.config = config
+    # Current config
+    self.cur_config = copy.deepcopy(config)
+    if (self.config['gdActionPointOffset'] <= self.config['gdMiniSlotActionPointOffset'] or self.config['gNumberOfMinislots'] == 0):
+        adActionPointDifference = 0
+    else:
+        adActionPointDifference = self.config['gdActionPointOffset'] - self.config['gdMiniSlotActionPointOffset']
+    # Constraint 18:
+    gMacroPerCycle = self.config['gdStaticSlot'] * self.config['gNumberOfStaticSlots'] + adActionPointDifference + \
+                     self.config['gdMinislot'] * self.config['gNumberOfMinislots'] + self.config['gdSymbolWindow'] + \
+                     self.config['gdNIT']
+    gdCycle = gMacroPerCycle * self.config['gdMacrotick']
+    result.append('gdCycle {} us'.format(gdCycle))
+
     self.gdSymbolWindow = 0
 
   def next(self):
     # Try next valid config
-    self.config['gdSymbolWindow'] = self.gdSymbolWindow
-    return self.config
+    self.cur_config['gdSymbolWindow'] = self.gdSymbolWindow
+    return self.cur_config
 
   def finished(self):
     if self.gdSymbolWindow == 128:
@@ -56,6 +70,7 @@ class BruteForceGUI(QWidget):
     self.join_cluster_timer.timeout.connect(self.on_join_cluster_timeout)
     self.join_cluster_timer.setSingleShot(True)
     self.params_generator = None
+    self.existing = False
 
     self.connect_btn = QPushButton("&Start brute-force...")
     self.connect_btn.setFixedWidth(200)
@@ -101,11 +116,10 @@ class BruteForceGUI(QWidget):
     stats_gb.setLayout(layout)
 
     self.log_lv = QListWidget()
-    bottom_vbox_layout = QVBoxLayout()
-    bottom_vbox_layout.addWidget(self.log_lv)
-
-    bottom_group_box = QGroupBox('Logs')
-    bottom_group_box.setLayout(bottom_vbox_layout)
+    logs_gb_layout = QVBoxLayout()
+    logs_gb_layout.addWidget(self.log_lv)
+    logs_gb = QGroupBox('Logs')
+    logs_gb.setLayout(logs_gb_layout)
 
     layout = QVBoxLayout()
     layout.addWidget(tool_bar)
@@ -114,7 +128,7 @@ class BruteForceGUI(QWidget):
     w.setLayout(layout)
     splitter = QSplitter(Qt.Vertical, self)
     splitter.addWidget(w)
-    splitter.addWidget(bottom_group_box)
+    splitter.addWidget(logs_gb)
     layout = QVBoxLayout()
     layout.addWidget(splitter)
     self.setLayout(layout)
@@ -122,6 +136,14 @@ class BruteForceGUI(QWidget):
     self.setGeometry(200, 200, 800, 450)
     self.setWindowTitle('FlexRay Brute-force Tool')
     self.show()
+
+  def closeEvent(self, ev):
+    if self.connected:
+      self.recv_packets_thread.stop()
+      self.existing = True
+      ev.ignore()
+    else:
+      ev.accept()
 
   def add_log(self, t):
     with open(os.path.expanduser("~/.flexray_adapter/bf.log"), 'a', encoding='utf-8') as f:
@@ -212,6 +234,9 @@ class BruteForceGUI(QWidget):
     self.rx_frames = self.rx_bytes = self.rx_bps = self.rx_bytes_within_this_second = 0
     self.tx_frames = self.tx_bytes = self.tx_bps = self.tx_bytes_within_this_second = 0
     self.connected = False
+    if self.existing:
+      self.close()  # closeEVent will be called again
+      return
     # Retry
     if True:
       self.start_connecting()
