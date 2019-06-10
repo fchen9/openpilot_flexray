@@ -26,23 +26,23 @@ def factors(n):
       results.add(int(n / i))
   return results
 
-# Brute-froce algorthm for finding out the correct length of dynamic segment(gdMinislot * gNumberOfMinislots).
-# Based on Constraint 18 equation.
+# Brute-force algorthm for finding out the correct length of dynamic segment(gdMinislot * gNumberOfMinislots).
+# Based on constraint 18 equation in flexray spec.
 # 1) Assume we already have the correct values  of gMacroPerCycle, gdStaticSlot, gNumberOfStaticSlots.
 # 2) Assume gdSymbolWindow is zero.
 # 3) Try all possible values of gdNIT, calculate the value of gdMinislot * gNumberOfMinislots.
-# 4) Return a valid pair of gdMinislot and gNumberOfMinislots
+# 4) Generate a valid pair of gdMinislot and gNumberOfMinislots for every possible value of gdNIT
 class BFAlgo1:
   def __init__(self, config):
     # Initial config
     self.config = config
-    # Current config
+    # Current config used for joining into car flexray network
     self.cur_config = copy.deepcopy(config)
     if (self.config['gdActionPointOffset'] <= self.config['gdMiniSlotActionPointOffset'] or self.config['gNumberOfMinislots'] == 0):
         adActionPointDifference = 0
     else:
         adActionPointDifference = self.config['gdActionPointOffset'] - self.config['gdMiniSlotActionPointOffset']
-    # Constraint 18:
+    # Constraint 18 equation
     self.gMacroPerCycle = self.config['gdStaticSlot'] * self.config['gNumberOfStaticSlots'] + adActionPointDifference + \
                      self.config['gdMinislot'] * self.config['gNumberOfMinislots'] + self.config['gdSymbolWindow'] + \
                      self.config['gdNIT']
@@ -55,6 +55,7 @@ class BFAlgo1:
     # Assume gdSymbolWindow is zero
     self.gdSymbolWindow = 0
 
+  # Calculate timing params according to constraint 18
   def caclulate_params(self, log_func):
     # Apparently gNumberOfMinislots of AUDI A4 is not zero.
     if (self.config['gdActionPointOffset'] <= self.config['gdMiniSlotActionPointOffset'] or self.config[
@@ -74,6 +75,7 @@ class BFAlgo1:
     log_func('Can not find valid params for diff {}, gdNIT: {}'.format(diff, self.gdNIT))
     return 0, 0
 
+  # Generate next valid config.
   def next(self, log_func):
     # Increase gdNIT until find valid minislot config
     while self.gdNIT < 15978:
