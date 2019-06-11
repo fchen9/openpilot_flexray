@@ -49,7 +49,7 @@ adOffsetCorrection is the length of the offset correction phase.
 - gdActionPointOffset is in range [1, 63]
 - gdNIT is in range [2, 15978]
 - gNumberOfMinislots is in range [0, 7988]
-- gdMiniSlot is in ange [2, 63]
+- gdMiniSlot is in range [2, 63]
 
 ### What we have for AUDI A4, from waveform decoding using pico scope.
 - gdCycle = 5000us
@@ -61,7 +61,8 @@ adOffsetCorrection is the length of the offset correction phase.
 ### A design of Brute-force algorithm for timing params estimation
 - Intialize gdNIT as 2, the min value of gdNIT.
 - Set gdSymbolWindow to zero.
-- Estimate *gdMinislot[MT] * gNumberOfMinislots* by doing calculation according to constraint 18 and Equation 12, and calculate the factor to find a valid pair of gdMinislot and gNumberOfMinislots values.
+- Estimate *gdMinislot[MT] * gNumberOfMinislots* by doing calculation according to constraint 18 and Equation 12, and calculate the factors to find a valid pair of gdMinislot and gNumberOfMinislots values.
+ - For example, for gdMinislot[MT] * gNumberOfMinislots = 1000, we set gdMinislot to 2 and gNumberOfMinislots to 500.
 - Set adOffsetCorrection to 711, why???
 - Estimate gOffsetCorrectionStart according to constraint 26
 - Increase gdNIT by 1 for every recursion
