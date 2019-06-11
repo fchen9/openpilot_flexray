@@ -63,9 +63,10 @@ adOffsetCorrection is the length of the offset correction phase.
 - Set gdSymbolWindow to zero.
 - Estimate *gdMinislot[MT] * gNumberOfMinislots* by doing calculation according to constraint 18 and Equation 12, and calculate the factors to find a valid pair of gdMinislot and gNumberOfMinislots values.
  - For example, for gdMinislot[MT] * gNumberOfMinislots = 1000, we set gdMinislot to 2 and gNumberOfMinislots to 500.
-- Set adOffsetCorrection to 711, why???
-- Estimate gOffsetCorrectionStart according to constraint 26
 - Increase gdNIT by 1 for every recursion
 
 ### TODO
-- brute-force gOffsetCorrectionMax, pOffsetCorrectionOut, pRateCorrectionOut.
+- Brute-force gOffsetCorrectionStart.
+- Brute-force gOffsetCorrectionMax.
+- Brute-force pOffsetCorrectionOut.
+- Brute-force pRateCorrectionOut.
