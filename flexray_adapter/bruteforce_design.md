@@ -5,14 +5,14 @@
 - gNumberOfStaticSlots
 - gdMinislot, length of dynamic slot, in macroticks.
 - gNumberOfMinislots
-- gdNIT
+- gdNIT, the network idle time.
 - gdActionPointOffset
 - gdMinislotActionPointOffset
-- gdSymbolWindow
+- gdSymbolWindow, the length og symbol window, for CAS transmission
 - gOffsetCorrectionMax, the maximum amount of offset correction.
 - pOffsetCorrectionOut, the upper bound for a permissible offset
 correction.
-- pRateCorrectionOut, the upper bound for a permissible rate correction
+- pRateCorrectionOut, the upper bound for a permissible rate correction.
 
 ### FlexRay params constraints
 - Constraint 18: 
@@ -20,11 +20,8 @@ correction.
 gMacroPerCycle[MT] = gdStaticSlot[MT] * gNumberOfStaticSlots + adActionPointDifference[MT] +
 gdMinislot[MT] * gNumberOfMinislots + gdSymbolWindow[MT] + gdNIT[MT]
 ```
-
   - *gdStaticSlot[MT] * gNumberOfStaticSlots + adActionPointDifference[MT]* is the total length of static segment.
   - *gdMinislot[MT] * gNumberOfMinislots* is the total length of dynamic segment.
-  - *gdSymbolWindow* is the length og symbol window, for CAS transmission.
-  - *gdNIT* is network idle time.
 
 - Equation 12: 
 ```
