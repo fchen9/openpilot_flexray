@@ -50,6 +50,7 @@ adOffsetCorrection is the length of the offset correction phase.
 - gdNIT is in range [2, 15978]
 - gNumberOfMinislots is in range [0, 7988]
 - gdMiniSlot is in range [2, 63]
+See bf.py GUI for other params' value range.
 
 ### What we have for AUDI A4, from waveform capturing and decoding using pico scope.
 - gdCycle = 5000us
