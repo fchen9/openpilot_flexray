@@ -51,7 +51,7 @@ adOffsetCorrection is the length of the offset correction phase.
 - gNumberOfMinislots is in range [0, 7988]
 - gdMiniSlot is in range [2, 63]
 
-### What we have for AUDI A4, from waveform decoding using pico scope.
+### What we have for AUDI A4, from waveform capturing and decoding using pico scope.
 - gdCycle = 5000us
 - gMacroPerCycle = 5000 MT
 - gdStaticSlot = 63
