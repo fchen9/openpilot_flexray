@@ -1,5 +1,5 @@
 ### The goal of OpenPilot FlexRay project
-Currently [OpenPilot](https://github.com/commaai/openpilot) can't support flexray based cars, like AUDI, BMW, Mercedes. Our goal is to fix this issues, run OpenPilot on these cars.
+Currently [OpenPilot](https://github.com/commaai/openpilot) can't support flexray based cars, like AUDI, BMW, Mercedes. Our goal is to fix this issue, run OpenPilot on these cars.
 ### How to add OpenPilot to a flexray car
 - Make a flexray adapter for EON.
 - Find Flexray parameters of the car, so that the flexray adapter can join into the flexray cluster.
