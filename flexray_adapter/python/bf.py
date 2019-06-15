@@ -18,7 +18,7 @@ from flexray_tool import (mkdirs_exists_ok, ReceivePacketsThread, ConnectOrConfi
 from tcp_interface import Connection, ADAPTER_IP_ADDR, ADAPTER_TCP_PORT
 from constants import *
 
-PROGRESS_FILE = os.path.expanduser("~/.flexray_adapter/bf_progress.yaml")
+PROGRESS_FILE = os.path.expanduser("~/.flexray_adapter/bf_progress2.yaml")
 
 
 def load_progress():
@@ -52,6 +52,79 @@ def factors(n):
 # 2) Assume gdSymbolWindow is zero.
 # 3) Try all possible values of gdNIT, calculate the value of gdMinislot * gNumberOfMinislots.
 # 4) Generate a valid pair of gdMinislot and gNumberOfMinislots for every possible value of gdNIT
+
+class BFAlgo2:
+  def __init__(self, config):
+    # Initial config
+    self.config = config
+    # Current config used for joining into car flexray network
+    self.cur_config = copy.deepcopy(config)
+    if (self.config['gdActionPointOffset'] <= self.config['gdMiniSlotActionPointOffset'] or self.config['gNumberOfMinislots'] == 0):
+        adActionPointDifference = 0
+    else:
+        adActionPointDifference = self.config['gdActionPointOffset'] - self.config['gdMiniSlotActionPointOffset']
+    # Constraint 18 equation
+    self.gMacroPerCycle = self.config['gdStaticSlot'] * self.config['gNumberOfStaticSlots'] + adActionPointDifference + \
+                     self.config['gdMinislot'] * self.config['gNumberOfMinislots'] + self.config['gdSymbolWindow'] + \
+                     self.config['gdNIT']
+    # gdSymbolWindow is in range [0, 162]
+    # gdMiniSlotActionPointOffset is in range [1, 31]
+    # gdActionPointOffset is in range [1, 63]
+    # gdNIT is in range [2, 15978]
+    # Start from minimum value of gdNIT
+    self.gdNIT = load_progress()
+    self.gdSymbolWindow = 580 - self.gdNIT
+
+  # Calculate timing params according to constraint 18
+  def caclulate_params(self, log_func):
+    # Apparently gNumberOfMinislots of AUDI A4 is not zero.
+    if (self.config['gdActionPointOffset'] <= self.config['gdMiniSlotActionPointOffset'] or self.config[
+      'gNumberOfMinislots'] == 0):
+      adActionPointDifference = 0
+    else:
+      adActionPointDifference = self.config['gdActionPointOffset'] - self.config['gdMiniSlotActionPointOffset']
+    # Constraint 18
+    diff = self.gMacroPerCycle - self.config['gdStaticSlot'] * self.config['gNumberOfStaticSlots'] - \
+           adActionPointDifference - self.gdSymbolWindow - self.gdNIT
+    # diff = gNumberOfMinislots * gdMinislot
+    # gNumberOfMinislots is in range [0, 7988]
+    # gdMiniSlot is in ange [2, 63]
+    for f in factors(diff):
+      if 2 <= f <= 63 and 0 < (diff / f) <= 7988:
+        return f, int(diff / f)
+    log_func('Can not find valid params for diff {}, gdNIT: {}'.format(diff, self.gdNIT))
+    return 0, 0
+
+  # Generate next valid config.
+  def next(self, log_func):
+    # Increase gdNIT until find valid minislot config
+    while self.gdNIT < 15978:
+      gdMinislot, gNumberOfMinislots = self.caclulate_params(log_func)
+      if gdMinislot != 0 and gNumberOfMinislots != 0:
+          break
+      self.gdNIT += 1
+    if self.gdNIT >= 580:
+      return None
+    self.cur_config['gdMinislot'] = gdMinislot
+    self.cur_config['gNumberOfMinislots'] = gNumberOfMinislots
+    self.cur_config['gdNIT'] = self.gdNIT
+    self.cur_config['gdSymbolWindow'] = self.gdSymbolWindow
+    # Assume a fixed adOffsetCorrection
+    adOffsetCorrection = self.gdNIT - 1
+    self.cur_config['gOffsetCorrectionStart'] = self.gMacroPerCycle - adOffsetCorrection
+
+    self.gdNIT += 1
+    self.gdSymbolWindow = 580 - self.gdNIT
+    return self.cur_config
+
+  def print_config(self):
+    r = 'gdNIT: {}'.format(self.cur_config['gdNIT'])
+    r = 'gdSymbolWindow: {}'.format(self.cur_config['gdSymbolWindow'])
+    r += ', gNumberOfMinislots: {}'.format(self.cur_config['gNumberOfMinislots'])
+    r += ', gdMinislot: {}'.format(self.cur_config['gdMinislot'])
+    return r
+
+
 class BFAlgo1:
   def __init__(self, config):
     # Initial config
@@ -73,7 +146,7 @@ class BFAlgo1:
     # Start from minimum value of gdNIT
     self.gdNIT = load_progress()
     # Assume gdSymbolWindow is zero
-    self.gdSymbolWindow = 0
+    self.gdSymbolWindow = 580 - self.gdNIT
 
   # Calculate timing params according to constraint 18
   def caclulate_params(self, log_func):
@@ -198,7 +271,7 @@ class BruteForceGUI(QWidget):
 
     layout = QVBoxLayout()
     self.progress_label = QLabel()
-    self.progress_label.setText('gdNIT: {}'.format(load_progress()))
+    self.progress_label.setText('gdNIT: {}, gdSymbolWindow: {}'.format(load_progress(), 580 - load_progress()))
     layout.addWidget(self.progress_label)
     progress_gb = QGroupBox('Progress')
     progress_gb.setLayout(layout)
@@ -257,7 +330,8 @@ class BruteForceGUI(QWidget):
         return
       self.cur_config = connect_dlg.cur_config
       self.add_log('Config file loaded: {}'.format(connect_dlg.cur_config_file))
-      self.bf_algo1 = BFAlgo1(self.cur_config)
+      #self.bf_algo1 = BFAlgo1(self.cur_config)
+      self.bf_algo1 = BFAlgo2(self.cur_config)
       for t in connect_dlg.verify_result:
         self.add_log(t)
       self.start_connecting()
@@ -287,7 +361,7 @@ class BruteForceGUI(QWidget):
       self.connect_btn.setEnabled(True)
       self.cancel_btn.setEnabled(False)
       return
-    self.progress_label.setText('gdNIT: {}'.format(self.bf_algo1.gdNIT))
+    self.progress_label.setText('gdNIT: {}, gdSymbolWindow: {}'.format(self.bf_algo1.gdNIT, self.bf_algo1.gdSymbolWindow))
     self.add_log('Try params: {}'.format(self.bf_algo1.print_config()))
     self.status_label_left.setText('Connecting...')
     self.connect_btn.setEnabled(False)
