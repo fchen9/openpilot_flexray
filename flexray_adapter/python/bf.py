@@ -6,6 +6,7 @@ import time
 import argparse
 import copy
 import math
+import yaml
 from datetime import datetime
 from PyQt5.QtWidgets import (
     QWidget, QGroupBox, QPushButton, QMessageBox, QVBoxLayout, QSplitter, QHBoxLayout, QLabel, QListWidget,
@@ -13,9 +14,28 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QIcon
 from flexray_config import (default_fr_config, verify_config, verify_config_format)
-from flexray_tool import (ReceivePacketsThread, ConnectOrConfigDialog)
+from flexray_tool import (mkdirs_exists_ok, ReceivePacketsThread, ConnectOrConfigDialog)
 from tcp_interface import Connection, ADAPTER_IP_ADDR, ADAPTER_TCP_PORT
 from constants import *
+
+PROGRESS_FILE = os.path.expanduser("~/.flexray_adapter/bf_progress.yaml")
+
+
+def load_progress():
+  gdNIT = 2
+  mkdirs_exists_ok(os.path.dirname(PROGRESS_FILE))
+  if os.path.exists(PROGRESS_FILE):
+    with open(PROGRESS_FILE, 'r') as f:
+      y = yaml.load(f)
+      if 'gdNIT' in y:
+        gdNIT = y['gdNIT']
+  return gdNIT
+
+
+def save_progress(gdNIT):
+  mkdirs_exists_ok(os.path.dirname(PROGRESS_FILE))
+  with open(PROGRESS_FILE, 'w') as outfile:
+    yaml.dump({'gdNIT': gdNIT}, outfile)
 
 
 def factors(n):
@@ -51,7 +71,7 @@ class BFAlgo1:
     # gdActionPointOffset is in range [1, 63]
     # gdNIT is in range [2, 15978]
     # Start from minimum value of gdNIT
-    self.gdNIT = 2
+    self.gdNIT = load_progress()
     # Assume gdSymbolWindow is zero
     self.gdSymbolWindow = 0
 
@@ -89,6 +109,10 @@ class BFAlgo1:
     self.cur_config['gNumberOfMinislots'] = gNumberOfMinislots
     self.cur_config['gdNIT'] = self.gdNIT
     self.cur_config['gdSymbolWindow'] = self.gdSymbolWindow
+    # Assume a fixed adOffsetCorrection
+    adOffsetCorrection = self.gdNIT - 1
+    self.cur_config['gOffsetCorrectionStart'] = self.gMacroPerCycle - adOffsetCorrection
+
     self.gdNIT += 1
     return self.cur_config
 
@@ -173,8 +197,16 @@ class BruteForceGUI(QWidget):
     logs_gb.setLayout(logs_gb_layout)
 
     layout = QVBoxLayout()
+    self.progress_label = QLabel()
+    self.progress_label.setText('gdNIT: {}'.format(load_progress()))
+    layout.addWidget(self.progress_label)
+    progress_gb = QGroupBox('Progress')
+    progress_gb.setLayout(layout)
+
+    layout = QVBoxLayout()
     layout.addWidget(tool_bar)
     layout.addWidget(stats_gb)
+    layout.addWidget(progress_gb)
     w = QWidget()
     w.setLayout(layout)
     splitter = QSplitter(Qt.Vertical, self)
@@ -255,6 +287,7 @@ class BruteForceGUI(QWidget):
       self.connect_btn.setEnabled(True)
       self.cancel_btn.setEnabled(False)
       return
+    self.progress_label.setText('gdNIT: {}'.format(self.bf_algo1.gdNIT))
     self.add_log('Try params: {}'.format(self.bf_algo1.print_config()))
     self.status_label_left.setText('Connecting...')
     self.connect_btn.setEnabled(False)
@@ -308,6 +341,7 @@ class BruteForceGUI(QWidget):
     if self.existing:
       self.close()  # closeEVent will be called again
       return
+    save_progress(self.bf_algo1.gdNIT)
     # Retry joining cluster with another set of params
     self.start_connecting()
 
