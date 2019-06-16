@@ -243,8 +243,14 @@ class ReceivePacketsThread(QThread):
             r.append('Missing Offset Correction')
         if pifr0 & FR_PIFR0_MRC_IF_U16:
             r.append('Missing Rate Correction')
+        if pifr0 & FR_PIFR0_FATL_IF_U16:
+            r.append('Fatal Protocol Error')
         if pifr0 & FR_PIFR0_INTL_IF_U16:
             r.append('Internal Protocol Error')
+        if pifr0 & FR_PIFR0_ILCF_IF_U16:
+            r.append('Illegal Protocol Configuration')
+        if pifr0 & FR_PIFR0_CSA_IF_U16:
+            r.append('Cold Start Abort')
 
     @staticmethod
     def parse_psr0_psr1(psr0, psr1, r):
@@ -383,14 +389,18 @@ class ReceivePacketsThread(QThread):
             t = self._conn.parse_health_packet(payload)
             if not t:
                 return
-            psr0, psr1, psr2, psr3, pifr0, max_rc, max_oc, min_rc, min_oc, a_even_cnt, b_even_cnt, a_odd_cnt, b_odd_cnt, sft = t
+            psr0, psr1, psr2, psr3, pifr0, rtcor, offcor, max_rc, max_oc, min_rc, min_oc, a_even_cnt, b_even_cnt, a_odd_cnt, b_odd_cnt, sft = t
             r = []
             self.parse_psr0_psr1(psr0, psr1, r)
             self.parse_psr2(psr2, r)
             self.parse_psr3(psr3, r)
             self.parse_pifr0(pifr0, r)
-            r.append('Rate correction Max: {}, Min: {}'.format(max_rc, min_rc))
-            r.append('Offset correction Max: {}, Min: {}'.format(max_oc, min_oc))
+            r.append('Rate correction out: {}'.format(rtcor))
+            r.append('Offset correction out: {}'.format(offcor))
+            if max_rc != 0 or min_rc != 0:
+                r.append('Rate correction Max: {}, Min: {}'.format(max_rc, min_rc))
+            if max_oc != 0 or min_oc != 0:
+                r.append('Offset correction Max: {}, Min: {}'.format(max_oc, min_oc))
             self.parse_sync_frame_table(a_even_cnt, b_even_cnt, a_odd_cnt, b_odd_cnt, sft, r)
             self._status_data_signal.emit('\n'.join(r))
 

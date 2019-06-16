@@ -118,7 +118,7 @@ class Connection:
       return None
     if len(payload) % SIZEOF_UINT16 != 0:
       raise RuntimeError("Invalid payload len for health packet: {}".format(len(payload)))
-    reg_vals = 6
+    reg_vals = 8
     corrections = 4
     if len(payload) // SIZEOF_UINT16 < (reg_vals + corrections):
       raise RuntimeError("Invalid payload len for health packet: {}".format(len(payload)))
@@ -127,10 +127,10 @@ class Connection:
     b_even_cnt = (t[5] & 0xF000) >> 12
     a_odd_cnt = t[5] & 0x000F
     b_odd_cnt = (t[5] & 0x00F0) >> 4
-    # PSR0, PSR1, PSR2, PSR3, PIFR0,
+    # PSR0, PSR1, PSR2, PSR3, PIFR0, RateCorrect, OffCorrect
     # max_rate_correction, max_offset_correction, min_rate_correction, min_offset_correction,
     # a_even_cnt, b_even_cnt, a_even_cnt, a_even_cnt, sync frame table
-    return t[0], t[1], t[2], t[3], t[4], t[6], t[7], t[8], t[9], a_even_cnt, b_even_cnt, a_odd_cnt, b_odd_cnt, t[10:]
+    return t[0], t[1], t[2], t[3], t[4], t[6], t[7], t[8], t[9], t[10], t[11], a_even_cnt, b_even_cnt, a_odd_cnt, b_odd_cnt, t[12:]
 
   def send_frame(self, frame_id, payload):
     if len(payload) == 0:

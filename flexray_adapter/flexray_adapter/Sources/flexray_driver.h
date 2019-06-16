@@ -68,7 +68,8 @@ uint8_t flexray_driver_get_sync_frame_table (
 		uint8_t *b_odd_cnt,
 		uint16_t *sfcntr
 );
-uint8_t flexray_driver_get_status_registers(uint16_t *psr0, uint16_t *psr1, uint16_t *psr2, uint16_t *psr3, uint16_t *pifr0);
+uint8_t flexray_driver_get_status_registers(
+		uint16_t *psr0, uint16_t *psr1, uint16_t *psr2, uint16_t *psr3, uint16_t *pifr0, uint16_t *rtcor, uint16_t *ofcor);
 
 uint8_t flexray_driver_receive_fifoa(uint8_t *buf_ptr, fr_rx_status * rx_status_ptr, uint8_t* data_len_ptr, uint16_t *frame_id_ptr);
 uint8_t flexray_driver_receive_fifob(uint8_t *buf_ptr, fr_rx_status * rx_status_ptr, uint8_t* data_len_ptr, uint16_t *frame_id_ptr);

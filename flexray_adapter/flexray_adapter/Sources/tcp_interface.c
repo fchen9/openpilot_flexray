@@ -20,7 +20,7 @@
 
 typedef struct {
 	packet_header msg_hdr;
-	uint16_t reg_vals[6];
+	uint16_t reg_vals[8];
 	int16_t min_max_corrections[4];
 	/* Sync frame ID/Deviation tables. */
 	uint16_t sync_frame_table[60];
@@ -114,7 +114,13 @@ static void process_packet(const packet_header *pkt_header) {
 			}
 			/* FlexRay spec 2.1: Section 9.3.1.3 Protocol status data */
 			flexray_driver_get_status_registers(
-					&s_status_data_packet.reg_vals[0], &s_status_data_packet.reg_vals[1], &s_status_data_packet.reg_vals[2], &s_status_data_packet.reg_vals[3], &s_status_data_packet.reg_vals[4]);
+					&s_status_data_packet.reg_vals[0],
+					&s_status_data_packet.reg_vals[1],
+					&s_status_data_packet.reg_vals[2],
+					&s_status_data_packet.reg_vals[3],
+					&s_status_data_packet.reg_vals[4],
+					&s_status_data_packet.reg_vals[6],
+					&s_status_data_packet.reg_vals[7]);
 			flexray_driver_get_sync_frame_table(&s_status_data_packet.sync_frame_table[0], &a_even_cnt, &b_even_cnt, &a_odd_cnt, &b_odd_cnt, &s_status_data_packet.reg_vals[5]);
 			memcpy(&s_status_data_packet.min_max_corrections[0], &g_flexray_data.max_rate_correction, sizeof(s_status_data_packet.min_max_corrections));
 			tcp_interface_send_packet(PACKET_TYPE_HEALTH,

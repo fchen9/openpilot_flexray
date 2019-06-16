@@ -907,7 +907,8 @@ uint8_t flexray_driver_get_sync_frame_table (
     return SUCCESS;
 }
 
-uint8_t flexray_driver_get_status_registers(uint16_t *psr0, uint16_t *psr1, uint16_t *psr2,  uint16_t *psr3, uint16_t *pifr0) {
+uint8_t flexray_driver_get_status_registers(
+		uint16_t *psr0, uint16_t *psr1, uint16_t *psr2,  uint16_t *psr3, uint16_t *pifr0, uint16_t *rtcor, uint16_t *ofcor) {
     if(!CC_ENABLED) {
     	return FAILED;
     }
@@ -920,6 +921,8 @@ uint8_t flexray_driver_get_status_registers(uint16_t *psr0, uint16_t *psr1, uint
 	/* aggregated channel status information */
 	*psr2 = READ_FR_REGISTER16(FR_PSR3_OFFSET);
 	*pifr0 = READ_FR_REGISTER16(FR_PIFR0_OFFSET);
+	*rtcor = READ_FR_REGISTER16(FR_RTCORVR_OFFSET);
+	*ofcor = READ_FR_REGISTER16(FR_OFCORVR_OFFSET);
 	return SUCCESS;
 }
 

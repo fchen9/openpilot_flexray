@@ -18,7 +18,7 @@ from flexray_tool import (mkdirs_exists_ok, ReceivePacketsThread, ConnectOrConfi
 from tcp_interface import Connection, ADAPTER_IP_ADDR, ADAPTER_TCP_PORT
 from constants import *
 
-PROGRESS_FILE = os.path.expanduser("~/.flexray_adapter/bf_progress2.yaml")
+PROGRESS_FILE = os.path.expanduser("~/.flexray_adapter/bf_progress3.yaml")
 
 
 def load_progress():
@@ -73,7 +73,7 @@ class BFAlgo2:
     # gdNIT is in range [2, 15978]
     # Start from minimum value of gdNIT
     self.gdNIT = load_progress()
-    self.gdSymbolWindow = 580 - self.gdNIT
+    self.gdSymbolWindow = 0
 
   # Calculate timing params according to constraint 18
   def caclulate_params(self, log_func):
@@ -97,10 +97,12 @@ class BFAlgo2:
 
   # Generate next valid config.
   def next(self, log_func):
-    # Increase gdNIT until find valid minislot config
-    while self.gdNIT < 15978:
-      gdMinislot, gNumberOfMinislots = self.caclulate_params(log_func)
-      if gdMinislot != 0 and gNumberOfMinislots != 0:
+    # Increase gdNIT until find valid minislot config and symbol window
+    while self.gdNIT < 580:
+      self.gdSymbolWindow = 580 - self.gdNIT
+      if 0 <= self.gdSymbolWindow <= 162:
+        gdMinislot, gNumberOfMinislots = self.caclulate_params(log_func)
+        if gdMinislot != 0 and gNumberOfMinislots != 0:
           break
       self.gdNIT += 1
     if self.gdNIT >= 580:
@@ -112,14 +114,19 @@ class BFAlgo2:
     # Assume a fixed adOffsetCorrection
     adOffsetCorrection = self.gdNIT - 1
     self.cur_config['gOffsetCorrectionStart'] = self.gMacroPerCycle - adOffsetCorrection
-
+    ok, err = verify_config(self.cur_config)
+    if not ok:
+      if type(err) == str:
+        log_func('gdNIT: {}, invalid config: {}'.format(self.gdNIT, err))
+      elif type(err) == tuple:
+        log_func('gdNIT: {}, invalid config: {} should be {}'.format(self.gdNIT, err[0], err[1]))
+      return None
     self.gdNIT += 1
-    self.gdSymbolWindow = 580 - self.gdNIT
     return self.cur_config
 
   def print_config(self):
     r = 'gdNIT: {}'.format(self.cur_config['gdNIT'])
-    r = 'gdSymbolWindow: {}'.format(self.cur_config['gdSymbolWindow'])
+    r += 'gdSymbolWindow: {}'.format(self.cur_config['gdSymbolWindow'])
     r += ', gNumberOfMinislots: {}'.format(self.cur_config['gNumberOfMinislots'])
     r += ', gdMinislot: {}'.format(self.cur_config['gdMinislot'])
     return r
@@ -362,7 +369,7 @@ class BruteForceGUI(QWidget):
       self.cancel_btn.setEnabled(False)
       return
     self.progress_label.setText('gdNIT: {}, gdSymbolWindow: {}'.format(self.bf_algo1.gdNIT, self.bf_algo1.gdSymbolWindow))
-    self.add_log('Try params: {}'.format(self.bf_algo1.print_config()))
+    self.add_log('Begin test: {}'.format(self.bf_algo1.print_config()))
     self.status_label_left.setText('Connecting...')
     self.connect_btn.setEnabled(False)
     self.conn = Connection(config)
@@ -464,7 +471,7 @@ class BruteForceGUI(QWidget):
   def on_status_data(self, text):
     self.detail_status.setText(text)
     for t in text.split('\n'):
-      self.add_log(t)
+      self.add_log('gdNIT: {}, {}'.format(self.bf_algo1.gdNIT, t))
 
   def update_statistics_label(self):
     if self.tx_bps > 1000:
@@ -489,7 +496,7 @@ class BruteForceGUI(QWidget):
     self.update_statistics_label()
 
   def on_join_cluster_timeout(self):
-    self.add_log('Join cluster timeout.')
+    self.add_log('gdNIT: {}, Join cluster timeout.'.format(self.bf_algo1.gdNIT))
     self.disconnect()
 
 def get_arg_parser():
@@ -501,7 +508,7 @@ def get_arg_parser():
                       help="IP address of flexray adapter.")
   parser.add_argument("--port", nargs="?", default=ADAPTER_TCP_PORT,
                       help="Listen port of flexray adapter.")
-  parser.add_argument("--timeout", nargs="?", type=float, default=2000.,
+  parser.add_argument("--timeout", nargs="?", type=float, default=5 * 1000.,
                       help="Wait timeout for joining cluster.")
   return parser
 
