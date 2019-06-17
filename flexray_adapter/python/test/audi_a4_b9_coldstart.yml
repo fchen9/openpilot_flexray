@@ -1,0 +1,156 @@
+BIT_RATE: 0
+CLOCK_SRC: 0
+FIFOA_Depth: 0
+FIFOA_EN: 0
+FIFOA_F0_EN: 0
+FIFOA_F0_MODE: 0
+FIFOA_F0_SID_LOWER: 0
+FIFOA_F0_SID_UPPER: 0
+FIFOA_F1_EN: 0
+FIFOA_F1_MODE: 0
+FIFOA_F1_SID_LOWER: 0
+FIFOA_F1_SID_UPPER: 0
+FIFOA_F2_EN: 0
+FIFOA_F2_MODE: 0
+FIFOA_F2_SID_LOWER: 0
+FIFOA_F2_SID_UPPER: 0
+FIFOA_F3_EN: 0
+FIFOA_F3_MODE: 0
+FIFOA_F3_SID_LOWER: 0
+FIFOA_F3_SID_UPPER: 0
+FIFOA_MIAFM: 0
+FIFOA_MIAFV: 0
+FIFOB_Depth: 0
+FIFOB_EN: 0
+FIFOB_F0_EN: 0
+FIFOB_F0_MODE: 0
+FIFOB_F0_SID_LOWER: 0
+FIFOB_F0_SID_UPPER: 0
+FIFOB_F1_EN: 0
+FIFOB_F1_MODE: 0
+FIFOB_F1_SID_LOWER: 0
+FIFOB_F1_SID_UPPER: 0
+FIFOB_F2_EN: 0
+FIFOB_F2_MODE: 0
+FIFOB_F2_SID_LOWER: 0
+FIFOB_F2_SID_UPPER: 0
+FIFOB_F3_EN: 0
+FIFOB_F3_MODE: 0
+FIFOB_F3_SID_LOWER: 0
+FIFOB_F3_SID_UPPER: 0
+FIFOB_MIAFM: 0
+FIFOB_MIAFV: 0
+LOG_STATUS_DATA: 1
+LineLength: 24
+RxMsgBufs:
+- {CCF_EN: 0, CCF_MASK: 0, CCF_VAL: 0, Channels: 3, FrameId: 2}
+- {CCF_EN: 0, CCF_MASK: 0, CCF_VAL: 0, Channels: 3, FrameId: 3}
+- {CCF_EN: 0, CCF_MASK: 0, CCF_VAL: 0, Channels: 3, FrameId: 4}
+- {CCF_EN: 0, CCF_MASK: 0, CCF_VAL: 0, Channels: 3, FrameId: 5}
+- {CCF_EN: 0, CCF_MASK: 0, CCF_VAL: 0, Channels: 3, FrameId: 6}
+- {CCF_EN: 0, CCF_MASK: 0, CCF_VAL: 0, Channels: 3, FrameId: 7}
+- {CCF_EN: 0, CCF_MASK: 0, CCF_VAL: 0, Channels: 3, FrameId: 8}
+- {CCF_EN: 0, CCF_MASK: 0, CCF_VAL: 0, Channels: 3, FrameId: 9}
+- {CCF_EN: 0, CCF_MASK: 0, CCF_VAL: 0, Channels: 3, FrameId: 10}
+- {CCF_EN: 0, CCF_MASK: 0, CCF_VAL: 0, Channels: 3, FrameId: 11}
+- {CCF_EN: 0, CCF_MASK: 0, CCF_VAL: 0, Channels: 3, FrameId: 12}
+- {CCF_EN: 0, CCF_MASK: 0, CCF_VAL: 0, Channels: 3, FrameId: 13}
+- {CCF_EN: 0, CCF_MASK: 0, CCF_VAL: 0, Channels: 3, FrameId: 14}
+- {CCF_EN: 0, CCF_MASK: 0, CCF_VAL: 0, Channels: 3, FrameId: 15}
+- {CCF_EN: 0, CCF_MASK: 0, CCF_VAL: 0, Channels: 3, FrameId: 16}
+- {CCF_EN: 0, CCF_MASK: 0, CCF_VAL: 0, Channels: 3, FrameId: 17}
+- {CCF_EN: 0, CCF_MASK: 0, CCF_VAL: 0, Channels: 3, FrameId: 18}
+- {CCF_EN: 0, CCF_MASK: 0, CCF_VAL: 0, Channels: 3, FrameId: 19}
+- {CCF_EN: 0, CCF_MASK: 0, CCF_VAL: 0, Channels: 3, FrameId: 20}
+- {CCF_EN: 0, CCF_MASK: 0, CCF_VAL: 0, Channels: 3, FrameId: 21}
+- {CCF_EN: 0, CCF_MASK: 0, CCF_VAL: 0, Channels: 3, FrameId: 22}
+- {CCF_EN: 0, CCF_MASK: 0, CCF_VAL: 0, Channels: 3, FrameId: 23}
+- {CCF_EN: 0, CCF_MASK: 0, CCF_VAL: 0, Channels: 3, FrameId: 24}
+- {CCF_EN: 0, CCF_MASK: 0, CCF_VAL: 0, Channels: 3, FrameId: 25}
+- {CCF_EN: 0, CCF_MASK: 0, CCF_VAL: 0, Channels: 3, FrameId: 26}
+- {CCF_EN: 0, CCF_MASK: 0, CCF_VAL: 0, Channels: 3, FrameId: 27}
+- {CCF_EN: 0, CCF_MASK: 0, CCF_VAL: 0, Channels: 3, FrameId: 28}
+- {CCF_EN: 0, CCF_MASK: 0, CCF_VAL: 0, Channels: 3, FrameId: 29}
+- {CCF_EN: 0, CCF_MASK: 0, CCF_VAL: 0, Channels: 3, FrameId: 30}
+- {CCF_EN: 0, CCF_MASK: 0, CCF_VAL: 0, Channels: 3, FrameId: 31}
+- {CCF_EN: 0, CCF_MASK: 0, CCF_VAL: 0, Channels: 3, FrameId: 32}
+- {CCF_EN: 0, CCF_MASK: 0, CCF_VAL: 0, Channels: 3, FrameId: 33}
+- {CCF_EN: 0, CCF_MASK: 0, CCF_VAL: 0, Channels: 3, FrameId: 34}
+- {CCF_EN: 0, CCF_MASK: 0, CCF_VAL: 0, Channels: 3, FrameId: 35}
+- {CCF_EN: 0, CCF_MASK: 0, CCF_VAL: 0, Channels: 3, FrameId: 36}
+- {CCF_EN: 0, CCF_MASK: 0, CCF_VAL: 0, Channels: 3, FrameId: 37}
+- {CCF_EN: 0, CCF_MASK: 0, CCF_VAL: 0, Channels: 3, FrameId: 38}
+- {CCF_EN: 0, CCF_MASK: 0, CCF_VAL: 0, Channels: 3, FrameId: 39}
+- {CCF_EN: 0, CCF_MASK: 0, CCF_VAL: 0, Channels: 3, FrameId: 40}
+- {CCF_EN: 0, CCF_MASK: 0, CCF_VAL: 0, Channels: 3, FrameId: 41}
+- {CCF_EN: 0, CCF_MASK: 0, CCF_VAL: 0, Channels: 3, FrameId: 42}
+- {CCF_EN: 0, CCF_MASK: 0, CCF_VAL: 0, Channels: 3, FrameId: 43}
+- {CCF_EN: 0, CCF_MASK: 0, CCF_VAL: 0, Channels: 3, FrameId: 44}
+- {CCF_EN: 0, CCF_MASK: 0, CCF_VAL: 0, Channels: 3, FrameId: 45}
+- {CCF_EN: 0, CCF_MASK: 0, CCF_VAL: 0, Channels: 3, FrameId: 46}
+- {CCF_EN: 0, CCF_MASK: 0, CCF_VAL: 0, Channels: 3, FrameId: 47}
+- {CCF_EN: 0, CCF_MASK: 0, CCF_VAL: 0, Channels: 3, FrameId: 48}
+- {CCF_EN: 0, CCF_MASK: 0, CCF_VAL: 0, Channels: 3, FrameId: 49}
+- {CCF_EN: 0, CCF_MASK: 0, CCF_VAL: 0, Channels: 3, FrameId: 50}
+- {CCF_EN: 0, CCF_MASK: 0, CCF_VAL: 0, Channels: 3, FrameId: 51}
+SCM_EN: 0
+TxMsgBufs:
+- {CCF_EN: 0, CCF_MASK: 0, CCF_VAL: 0, Channels: 3, DynPayloadLen: 0, FrameId: 1,
+  PPI: 0, PayloadLenMax: 0}
+gColdStartAttempts: 10
+gListenNoise: 2
+gMaxWithoutClockCorrectionFatal: 14
+gMaxWithoutClockCorrectionPassive: 10
+gNetworkManagementVectorLength: 2
+gNumberOfMinislots: 71
+gNumberOfStaticSlots: 51
+gOffsetCorrectionMax: 100.0
+gOffsetCorrectionStart: 5194
+gPayloadLengthStatic: 17
+gSyncFrameIDCountMax: 5
+gdActionPointOffset: 9
+gdCasRxLowMax: 91
+gdDynamicSlotIdlePhase: 1
+gdMacrotick: 1
+gdMaxInitializationError: 0.5
+gdMinPropagationDelay: 0.0
+gdMiniSlotActionPointOffset: 9
+gdMinislot: 17
+gdNIT: 430
+gdStaticSlot: 63
+gdSymbolWindow: 150
+gdTSSTransmitter: 9
+gdWakeupRxWindow: 301
+gdWakeupSymbolRxIdle: 59
+gdWakeupSymbolRxLow: 55
+gdWakeupSymbolTxActive: 60
+gdWakeupSymbolTxIdle: 180
+nStar: 0
+pAllowHaltDueToClock: 1
+pAllowPassiveToActive: 0
+pChannels: 2
+pClusterDriftDamping: 1
+pDecodingCorrection: 48
+pDelayCompensationA: 0
+pDelayCompensationB: 0
+pKeySlotId: 1
+pKeySlotOnlyEnabled: 0
+pKeySlotUsedForStartup: 1
+pKeySlotUsedForSync: 1
+pLatestTx: 157
+pMacroInitialOffsetA: 11
+pMacroInitialOffsetB: 11
+pMicroInitialOffsetA: 32
+pMicroInitialOffsetB: 32
+pMicroPerCycle: 200000
+pOffsetCorrectionOut: 4007
+pPayloadLengthDynMax: 8
+pRateCorrectionOut: 601
+pWakeupChannel: 0
+pWakeupPattern: 63
+pdAcceptedStartupRange: 110
+pdBDRx: 0.1
+pdBDTx: 0.1
+pdListenTimeout: 401200
+pdMaxDrift: 600
+pdStarDelay: 0.25
