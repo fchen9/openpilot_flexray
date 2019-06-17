@@ -225,7 +225,7 @@ pMacroInitialOffsetB: 7
 pMicroInitialOffsetA: 24
 pMicroInitialOffsetB: 24
 pMicroPerCycle: 328000
-pOffsetCorrectionOut: 986
+pOffsetCorrectionOut: 481
 pPayloadLengthDynMax: 32
 pRateCorrectionOut: 986
 pWakeupChannel: 0

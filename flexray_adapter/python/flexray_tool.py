@@ -202,7 +202,7 @@ class ReceivePacketsThread(QThread):
     _joined_cluster_signal = pyqtSignal()
     _disconnected_from_cluster_signal = pyqtSignal()
     _join_cluster_failed_signal = pyqtSignal()
-    _flexray_fatal_error_signal = pyqtSignal()
+    _flexray_fatal_error_signal = pyqtSignal('int')
     _exit_signal = pyqtSignal()
     _exception_signal = pyqtSignal('QString')
     _status_data_signal = pyqtSignal('QString')
@@ -374,35 +374,36 @@ class ReceivePacketsThread(QThread):
             aggregated_i += 2
 
     def on_pkt_recved(self, pkt_type, frame_id, payload):
-        if pkt_type == PACKET_TYPE_FLEXRAY_FRAME:
-            hexes = ' '.join([format(x, 'X') for x in payload])
-            self._frame_received_signal.emit(str(frame_id), hexes, len(payload))
-        elif pkt_type == PACKET_TYPE_FLEXRAY_JOINED_CLUSTER:
-            self._joined_cluster_signal.emit()
-        elif pkt_type == PACKET_TYPE_FLEXRAY_JOIN_CLUSTER_FAILED:
-            self._join_cluster_failed_signal.emit()
-        elif pkt_type == PACKET_TYPE_FLEXRAY_DISCONNECTED_FROM_CLUSTER:
-            self._disconnected_from_cluster_signal.emit()
-        elif pkt_type == PACKET_TYPE_FLEXRAY_FATAL_ERROR:
-            self._flexray_fatal_error_signal.emit()
-        elif pkt_type == PACKET_TYPE_HEALTH:
-            t = self._conn.parse_health_packet(payload)
-            if not t:
-                return
-            psr0, psr1, psr2, psr3, pifr0, rtcor, offcor, max_rc, max_oc, min_rc, min_oc, a_even_cnt, b_even_cnt, a_odd_cnt, b_odd_cnt, sft = t
-            r = []
-            self.parse_psr0_psr1(psr0, psr1, r)
-            self.parse_psr2(psr2, r)
-            self.parse_psr3(psr3, r)
-            self.parse_pifr0(pifr0, r)
-            r.append('Rate correction out: {}'.format(rtcor))
-            r.append('Offset correction out: {}'.format(offcor))
-            if max_rc != 0 or min_rc != 0:
-                r.append('Rate correction Max: {}, Min: {}'.format(max_rc, min_rc))
-            if max_oc != 0 or min_oc != 0:
-                r.append('Offset correction Max: {}, Min: {}'.format(max_oc, min_oc))
-            self.parse_sync_frame_table(a_even_cnt, b_even_cnt, a_odd_cnt, b_odd_cnt, sft, r)
-            self._status_data_signal.emit('\n'.join(r))
+      if pkt_type == PACKET_TYPE_FLEXRAY_FRAME:
+        hexes = ' '.join([format(x, 'X') for x in payload])
+        self._frame_received_signal.emit(str(frame_id), hexes, len(payload))
+      elif pkt_type == PACKET_TYPE_FLEXRAY_JOINED_CLUSTER:
+        self._joined_cluster_signal.emit()
+      elif pkt_type == PACKET_TYPE_FLEXRAY_JOIN_CLUSTER_FAILED:
+        self._join_cluster_failed_signal.emit()
+      elif pkt_type == PACKET_TYPE_FLEXRAY_DISCONNECTED_FROM_CLUSTER:
+        self._disconnected_from_cluster_signal.emit()
+      elif pkt_type == PACKET_TYPE_FLEXRAY_FATAL_ERROR:
+        err = self._conn.parse_error_packet()
+        self._flexray_fatal_error_signal.emit(err)
+      elif pkt_type == PACKET_TYPE_HEALTH:
+        t = self._conn.parse_health_packet(payload)
+        if not t:
+          return
+        psr0, psr1, psr2, psr3, pifr0, rtcor, offcor, max_rc, max_oc, min_rc, min_oc, a_even_cnt, b_even_cnt, a_odd_cnt, b_odd_cnt, sft = t
+        r = []
+        self.parse_psr0_psr1(psr0, psr1, r)
+        self.parse_psr2(psr2, r)
+        self.parse_psr3(psr3, r)
+        self.parse_pifr0(pifr0, r)
+        r.append('Rate correction out: {}'.format(rtcor))
+        r.append('Offset correction out: {}'.format(offcor))
+        if max_rc != 0 or min_rc != 0:
+          r.append('Rate correction Max: {}, Min: {}'.format(max_rc, min_rc))
+        if max_oc != 0 or min_oc != 0:
+          r.append('Offset correction Max: {}, Min: {}'.format(max_oc, min_oc))
+        self.parse_sync_frame_table(a_even_cnt, b_even_cnt, a_odd_cnt, b_odd_cnt, sft, r)
+        self._status_data_signal.emit('\n'.join(r))
 
     def on_peer_shutdown(self):
         self.stop()
@@ -836,7 +837,7 @@ class ConnectOrConfigDialog(QDialog):
 
     def add_rx_msg_buf(self, i):
         max_frame_id = 0
-        channels = 0
+        channels = 1
         if len(self.cur_config['RxMsgBufs']) > 0:
             max_frame_id = max([b['FrameId'] for b in self.cur_config['RxMsgBufs']])
             channels = self.cur_config['RxMsgBufs'][-1]['Channels']
@@ -860,7 +861,7 @@ class ConnectOrConfigDialog(QDialog):
     def add_tx_msg_buf(self, i):
         max_frame_id = 0
         payload_len_max = 0
-        channels = 0
+        channels = 1
         if len(self.cur_config['TxMsgBufs']) > 0:
             max_frame_id = max([b['FrameId'] for b in self.cur_config['TxMsgBufs']])
             payload_len_max = self.cur_config['TxMsgBufs'][-1]['PayloadLenMax']
@@ -1192,13 +1193,13 @@ class FlexRayGUI(QWidget):
         self.send_frame_btn.setEnabled(False)
         self.add_log(datetime.now().strftime('%H:%M:%S.%f')[:-3] + ' Disconnected from cluster, please check the FlexRay cable')
 
-    def on_fatal_error(self):
-        self.status_label_right.setText('   Fatal Error   ')
+    def on_fatal_error(self, err):
+        self.status_label_right.setText('   Fatal Error {}   '.format(err))
         self.status_label_right.setStyleSheet(self.error_text_style)
         if self.send_frame_thread:
             self.start_or_stop_send_frame_thd()
         self.send_frame_btn.setEnabled(False)
-        self.add_log(datetime.now().strftime('%H:%M:%S.%f')[:-3] + ' FlexRay fatal error')
+        self.add_log(datetime.now().strftime('%H:%M:%S.%f')[:-3] + ' FlexRay fatal error, code {}'.format(err))
 
     def on_send_frame_thd_exception(self, e):
         self.add_log(datetime.now().strftime('%H:%M:%S.%f')[:-3] + ' ' + e)

@@ -261,6 +261,16 @@ def verify_config(config):
     if config['gNumberOfMinislots'] != int(gNumberOfMinislots):
         return False, ('gNumberOfMinislots', gNumberOfMinislots)
 
+    # Constraint 22
+    pRateCorrectionOut = ceil(pMicroPerCycle * 2 * cClockDeviationMax / (1 - cClockDeviationMax))
+    if config['pRateCorrectionOut'] != pRateCorrectionOut:
+        return False, ('pRateCorrectionOut', pRateCorrectionOut)
+
+    #Constraint 25
+    pOffsetCorrectionOut = ceil(config['gOffsetCorrectionMax'] / (pdMicrotick * (1 - cClockDeviationMax)))
+    if config['pOffsetCorrectionOut'] != pOffsetCorrectionOut:
+        return False, ('pOffsetCorrectionOut', pOffsetCorrectionOut)
+
     # Constraint 30
     max_val = ceil(config['pMicroPerCycle'] * 2 * cClockDeviationMax / (1 - cClockDeviationMax))
     if config['pdMaxDrift'] > max_val:

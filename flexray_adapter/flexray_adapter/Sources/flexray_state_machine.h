@@ -22,6 +22,22 @@ typedef enum {
 	FLEXRAY_ERROR_FINAL
 } flexray_state;
 
+typedef enum {
+	FR_ERROR_OK = 0x0000,
+	FR_ERROR_INIT_GET_POC_STATUS,
+	FR_ERROR_INIT_ALLOWCOLDSTART,
+	FR_ERROR_INIT_START_COMM,
+	FR_ERROR_INIT_POC_READY_TIMEOUT,
+	FR_ERROR_JOIN_GET_POC_STATUS,
+	FR_ERROR_SET_ABS_TIMER_GET_GLOBAL_TIME,
+	FR_ERROR_SET_ABS_TIMER,
+	FR_ERROR_JOIN_HALT,
+	FR_ERROR_CHECK_TIMER_GET_POC_STATUS,
+	FR_ERROR_CHECK_TIMER_GET_TIMER_IRQ,
+	FR_ERROR_CHECK_TIMER_ACK_TIMER,
+	FR_ERROR_READ_RX_BUF,
+}flexray_error;
+
 typedef struct
 {
 	flexray_state state;
@@ -33,6 +49,7 @@ typedef struct
 	int16_t max_offset_correction;
 	int16_t min_rate_correction;
 	int16_t min_offset_correction;
+	flexray_error error;
 } flexray_data;
 
 extern flexray_data g_flexray_data;

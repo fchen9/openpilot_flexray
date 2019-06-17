@@ -18,7 +18,7 @@ from flexray_tool import (mkdirs_exists_ok, ReceivePacketsThread, ConnectOrConfi
 from tcp_interface import Connection, ADAPTER_IP_ADDR, ADAPTER_TCP_PORT
 from constants import *
 
-PROGRESS_FILE = os.path.expanduser("~/.flexray_adapter/bf_progress3.yaml")
+PROGRESS_FILE = os.path.expanduser("~/.flexray_adapter/bf_progress4.yaml")
 
 
 def load_progress():
@@ -126,7 +126,7 @@ class BFAlgo2:
 
   def print_config(self):
     r = 'gdNIT: {}'.format(self.cur_config['gdNIT'])
-    r += 'gdSymbolWindow: {}'.format(self.cur_config['gdSymbolWindow'])
+    r += ', gdSymbolWindow: {}'.format(self.cur_config['gdSymbolWindow'])
     r += ', gNumberOfMinislots: {}'.format(self.cur_config['gNumberOfMinislots'])
     r += ', gdMinislot: {}'.format(self.cur_config['gdMinislot'])
     return r
@@ -224,7 +224,7 @@ class BruteForceGUI(QWidget):
     self.join_cluster_timer = QTimer()
     self.join_cluster_timer.timeout.connect(self.on_join_cluster_timeout)
     self.join_cluster_timer.setSingleShot(True)
-    self.bf_algo1 = None
+    self.bf_algo = None
     self.existing = False
 
     self.connect_btn = QPushButton("&Start brute-force...")
@@ -310,10 +310,11 @@ class BruteForceGUI(QWidget):
         self.connect_timer.stop()
       ev.accept()
 
-  def add_log(self, t):
+  def add_log(self, text):
+    t = datetime.now().strftime('%H:%M:%S.%f')[:-3]
     with open(os.path.expanduser("~/.flexray_adapter/bf.log"), 'a', encoding='utf-8') as f:
-      f.write(t + '\n')
-    self.log_lv.addItem(t)
+      f.write(t + text + '\n')
+    self.log_lv.addItem(t + text)
     self.log_lv.scrollToBottom()
 
   def on_connect_timer(self):
@@ -337,8 +338,8 @@ class BruteForceGUI(QWidget):
         return
       self.cur_config = connect_dlg.cur_config
       self.add_log('Config file loaded: {}'.format(connect_dlg.cur_config_file))
-      #self.bf_algo1 = BFAlgo1(self.cur_config)
-      self.bf_algo1 = BFAlgo2(self.cur_config)
+      #self.bf_algo = BFAlgo1(self.cur_config)
+      self.bf_algo = BFAlgo2(self.cur_config)
       for t in connect_dlg.verify_result:
         self.add_log(t)
       self.start_connecting()
@@ -349,7 +350,7 @@ class BruteForceGUI(QWidget):
       self.connect_btn.setEnabled(False)
 
   def cancel_bruteforce(self):
-    self.bf_algo1 = None
+    self.bf_algo = None
     self.cancel_btn.setEnabled(False)
     if self.connected:
       self.recv_packets_thread.stop()
@@ -357,19 +358,20 @@ class BruteForceGUI(QWidget):
     else:
       self.connect_btn.setEnabled(True)
 
-  # Step 2, Generate a config by call bf_algo1.next, then connect to devkit.
+  # Step 2, Generate a config by call bf_algo.next, then connect to devkit.
   def start_connecting(self):
-    if not self.bf_algo1:
+    if not self.bf_algo:
       self.connect_btn.setEnabled(True)
       return
-    config = self.bf_algo1.next(self.add_log)
+    config = self.bf_algo.next(self.add_log)
     if not config:
       self.add_log('Brute-force finished.')
       self.connect_btn.setEnabled(True)
       self.cancel_btn.setEnabled(False)
       return
-    self.progress_label.setText('gdNIT: {}, gdSymbolWindow: {}'.format(self.bf_algo1.gdNIT, self.bf_algo1.gdSymbolWindow))
-    self.add_log('Begin test: {}'.format(self.bf_algo1.print_config()))
+    self.progress_label.setText(
+      'gdNIT: {}, gdSymbolWindow: {}'.format(self.bf_algo.cur_config['gdNIT'], self.bf_algo.cur_config['gdSymbolWindow']))
+    self.add_log('Begin test: {}'.format(self.bf_algo.print_config()))
     self.status_label_left.setText('Connecting...')
     self.connect_btn.setEnabled(False)
     self.conn = Connection(config)
@@ -422,7 +424,7 @@ class BruteForceGUI(QWidget):
     if self.existing:
       self.close()  # closeEVent will be called again
       return
-    save_progress(self.bf_algo1.gdNIT)
+    save_progress(self.bf_algo.cur_config['gdNIT'])
     # Retry joining cluster with another set of params
     self.start_connecting()
 
@@ -433,10 +435,10 @@ class BruteForceGUI(QWidget):
   def on_joined_cluster(self):
     self.status_label_right.setText('   Connected   ')
     self.status_label_right.setStyleSheet(self.connected_text_style)
-    self.add_log(datetime.now().strftime('%H:%M:%S.%f')[:-3] + ' Joined into cluster, sniffing on FlexRay bus...')
+    self.add_log(' Joined into cluster, sniffing on FlexRay bus...')
     if self.join_cluster_timer.isActive():
       self.join_cluster_timer.stop()
-    self.add_log(self.bf_algo1.print_config())
+    self.add_log(self.bf_algo.print_config())
     self.timer.start(1000)
     mb = QMessageBox(QMessageBox.Information, '', "Join cluster succeeded.")
     mb.exec()
@@ -457,10 +459,10 @@ class BruteForceGUI(QWidget):
     if self.time.isActive():
       self.timer.stop()
 
-  def on_fatal_error(self):
-    self.status_label_right.setText('   Fatal Error   ')
+  def on_fatal_error(self, err):
+    self.status_label_right.setText('   Fatal Error {}   '.format(err))
     self.status_label_right.setStyleSheet(self.error_text_style)
-    self.add_log(datetime.now().strftime('%H:%M:%S.%f')[:-3] + ' FlexRay fatal error')
+    self.add_log(datetime.now().strftime('%H:%M:%S.%f')[:-3] + ' FlexRay fatal error, code: {}'.format(err))
 
   def on_frame_received(self, frame_id, payload_hex, payload_len):
     self.add_log('Rx frame, id: {}, len: {}: '.format(frame_id, payload_len, payload_hex))
@@ -471,7 +473,7 @@ class BruteForceGUI(QWidget):
   def on_status_data(self, text):
     self.detail_status.setText(text)
     for t in text.split('\n'):
-      self.add_log('gdNIT: {}, {}'.format(self.bf_algo1.gdNIT, t))
+      self.add_log('gdNIT: {}, {}'.format(self.bf_algo.cur_config['gdNIT'], t))
 
   def update_statistics_label(self):
     if self.tx_bps > 1000:
@@ -496,7 +498,7 @@ class BruteForceGUI(QWidget):
     self.update_statistics_label()
 
   def on_join_cluster_timeout(self):
-    self.add_log('gdNIT: {}, Join cluster timeout.'.format(self.bf_algo1.gdNIT))
+    self.add_log('gdNIT: {}, Join cluster timeout.'.format(self.bf_algo.cur_config['gdNIT']))
     self.disconnect()
 
 def get_arg_parser():

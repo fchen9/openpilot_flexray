@@ -12,7 +12,7 @@
 #include "tcp_interface.h"
 #include "event.h"
 
-flexray_data g_flexray_data = {.state = FLEXRAY_WAITING_CLIENT_CONNECTION};
+flexray_data g_flexray_data = {.state = FLEXRAY_WAITING_CLIENT_CONNECTION, .error = FR_ERROR_OK};
 
 typedef struct {
 	packet_header hdr;
@@ -20,7 +20,13 @@ typedef struct {
 }frame_packet;
 frame_packet s_frame_packet;
 
-static uint8_t handle_rx() {
+typedef struct {
+	packet_header hdr;
+	uint16_t err;
+}error_packet;
+error_packet s_error_packet;
+
+static flexray_error handle_rx() {
     uint8_t ret = SUCCESS;
     fr_rx_status RxStatus;
     uint8_t u8RxLength = 0U;
@@ -32,7 +38,7 @@ static uint8_t handle_rx() {
 		/* Check the success of the call */
 		if(SUCCESS != ret) {
 			DBG_PRINT("flexray_driver_read_rx_buffer error %u", ret);
-			return ret;
+			return FR_ERROR_READ_RX_BUF;
 		} else {
 			if(FR_RX_STATUS_RECEIVED == RxStatus) {
 				SET_PACKET_FLAG_FRAME_ID(s_frame_packet.hdr.flags, g_fr_config.msg_bufs[i].frame_id);
@@ -60,7 +66,7 @@ static uint8_t handle_rx() {
 			tcp_interface_send_packet(PACKET_TYPE_FLEXRAY_FRAME, &s_frame_packet.hdr, u8RxLength);
 		}
 	}
-    return(ret);
+    return FR_ERROR_OK;
 }
 
 #if 0
@@ -72,7 +78,7 @@ static void print_task_statistics() {
 }
 #endif
 
-uint8_t set_abs_timer() {
+flexray_error set_abs_timer() {
     uint8_t ret, desired_timer_expire_cycle;
     uint8_t cur_cycle_counter = 0U;
     uint16_t cur_macro_tick = 0U;
@@ -93,7 +99,7 @@ uint8_t set_abs_timer() {
     }
     ret = flexray_driver_get_global_time(&cur_cycle_counter, &cur_macro_tick);
     if(SUCCESS != ret)
-    	return ret;
+    	return FR_ERROR_SET_ABS_TIMER_GET_GLOBAL_TIME;
 
 	if(cur_cycle_counter < cCycleCountMax) {
 		desired_timer_expire_cycle = cur_cycle_counter + 1U;
@@ -103,14 +109,14 @@ uint8_t set_abs_timer() {
 	/* Set the timer to expire in the next cycle */
 	ret = flexray_driver_set_abs_timer(0U, desired_timer_expire_cycle, offset_macroticks);
 	if(SUCCESS != ret) {
-		return ret;
 		DBG_PRINT("flexray_driver_set_abs_timer error %u", ret);
+    	return FR_ERROR_SET_ABS_TIMER;
 	}
 	/* We sleep for a while, give cpu to other tasks, wait the timer to expire.
 	 * FlexRay spec 2.1, B.4.11: max value of gMacroPerCycle is 16000
 	*/
 	sleep( floor((double)(gMacroPerCycle + offset_macroticks  - cur_macro_tick) * ((double)g_fr_config.gdMacrotick) / 1000.0) );
-    return ret;
+    return FR_ERROR_OK;
 }
 
 void flexray_run()
@@ -120,6 +126,7 @@ void flexray_run()
     fr_poc_status poc_state;
     EventBits_t event_bits;
     packet_header msg_hdr;
+    flexray_error err;
 
     /* Check in event group, start/stop driver on demand */
     event_bits =  xEventGroupWaitBits(
@@ -156,6 +163,7 @@ void flexray_run()
             /* Check the error status */
             if(SUCCESS != ret) {   /* The call was not successful - go to error state */
             	g_flexray_data.state = FLEXRAY_ERROR;
+            	g_flexray_data.error = FR_ERROR_INIT_GET_POC_STATUS;
             	DBG_PRINT("flexray_driver_get_poc_status error %u at FLEXRAY_CONFIGURED", ret);
             	break;
             }
@@ -165,12 +173,14 @@ void flexray_run()
 				/* Check the status */
 				if(SUCCESS != ret) {   /* An error has occurred - go to the error state */
 					g_flexray_data.state = FLEXRAY_ERROR;
+					g_flexray_data.error = FR_ERROR_INIT_ALLOWCOLDSTART;
 					DBG_PRINT("flexray_driver_allow_coldstart error %u", ret);
 				} else {    /* No error, so join the cluster */
 					 ret = flexray_driver_start_communication();
 					 /* Check success of the call (not of the integration to cluster) */
 					 if(SUCCESS != ret) {   /* An error has occurred - go to the error state */
 						 g_flexray_data.state = FLEXRAY_ERROR;
+						 g_flexray_data.error = FR_ERROR_INIT_START_COMM;
 						 DBG_PRINT("flexray_driver_start_communication error %u", ret);
 					 } else {   /* No error, the controller started joining the cluster - go to the next state */
 						 g_flexray_data.state = FLEXRAY_JOINING_CLUSTER;
@@ -183,6 +193,7 @@ void flexray_run()
 					g_flexray_data.state = FLEXRAY_INITIALIZED;
 				} else {   /* Timeout has expired - this is an error */
 					g_flexray_data.state = FLEXRAY_ERROR;
+					g_flexray_data.error = FR_ERROR_INIT_POC_READY_TIMEOUT;
 					DBG_PRINT("Waiting poc:ready timeout");
 				}
 			}
@@ -191,20 +202,23 @@ void flexray_run()
             ret = flexray_driver_get_poc_status(&poc_state);
             if(SUCCESS != ret) {
             	g_flexray_data.state = FLEXRAY_ERROR;
+				g_flexray_data.error = FR_ERROR_JOIN_GET_POC_STATUS;
             	DBG_PRINT("flexray_driver_get_poc_status error %u", ret);
             	break;
             }
 			if(FR_PSR0_PROTSTATE_NORMAL_ACTIVE_U16 == poc_state.state) {
 				DBG_PRINT("Joining cluster succeeded.");
 				tcp_interface_send_packet(PACKET_TYPE_FLEXRAY_JOINED_CLUSTER, &msg_hdr, 0U);
-				ret = set_abs_timer();
-				if(SUCCESS != ret)
+				err = set_abs_timer();
+				if(FR_ERROR_OK != err) {
 					g_flexray_data.state = FLEXRAY_ERROR;
-				else
+					g_flexray_data.error = err;
+				} else
 					g_flexray_data.state = FLEXRAY_CHECK_TIMER_STATUS;
 			} else if(FR_PSR0_PROTSTATE_HALT_U16 == poc_state.state) {
 				tcp_interface_send_packet(PACKET_TYPE_FLEXRAY_JOIN_CLUSTER_FAILED, &msg_hdr, 0);
 				g_flexray_data.state = FLEXRAY_ERROR;
+				g_flexray_data.error = FR_ERROR_JOIN_HALT;
 			} else
 				sleep(0);
             break;
@@ -212,6 +226,7 @@ void flexray_run()
             ret = flexray_driver_get_poc_status(&poc_state);
             if(SUCCESS != ret) {
             	g_flexray_data.state = FLEXRAY_ERROR;
+				g_flexray_data.error = FR_ERROR_CHECK_TIMER_GET_POC_STATUS;
             	DBG_PRINT("flexray_driver_get_poc_status error %u", ret);
             	break;
             }
@@ -223,25 +238,29 @@ void flexray_run()
 			ret = flexray_driver_get_timer_irq_status(0U, &timer_expired);
 			if(SUCCESS != ret) {
 				g_flexray_data.state = FLEXRAY_ERROR;
+				g_flexray_data.error = FR_ERROR_CHECK_TIMER_GET_TIMER_IRQ;
 				DBG_PRINT("Error in flexray_driver_get_timer_irq_status %u", ret);
 			} else {
 				if(1 == timer_expired) {
-					ret = handle_rx();
-					if(SUCCESS != ret) {
+					err = handle_rx();
+					if(FR_ERROR_OK != ret) {
 						g_flexray_data.state = FLEXRAY_ERROR;
+						g_flexray_data.error = err;
 						DBG_PRINT("Error in handle_rx");
 						break;
 					}
 					ret = flexray_driver_ack_abs_timer(0U);
 					if(SUCCESS != ret) {
 						g_flexray_data.state = FLEXRAY_ERROR;
+						g_flexray_data.error = FR_ERROR_CHECK_TIMER_ACK_TIMER;
 						DBG_PRINT("Error in flexray_driver_ack_abs_timer %u", ret);
 						break;
 					}
-					ret = set_abs_timer(); /* Schedule next timer */
-					if(SUCCESS != ret)
+					err = set_abs_timer(); /* Schedule next timer */
+					if(FR_ERROR_OK != err) {
 						g_flexray_data.state = FLEXRAY_ERROR;
-					else
+						g_flexray_data.error = err;
+					} else
 						g_flexray_data.state = FLEXRAY_CHECK_TIMER_STATUS;
 					break;
 				} else
@@ -254,7 +273,8 @@ void flexray_run()
             break;
         case FLEXRAY_ERROR:
         	/* Fatal error, should not happen. */
-			tcp_interface_send_packet(PACKET_TYPE_FLEXRAY_FATAL_ERROR, &msg_hdr, 0);
+        	s_error_packet.err = g_flexray_data.error;
+			tcp_interface_send_packet(PACKET_TYPE_FLEXRAY_FATAL_ERROR, &s_error_packet.hdr, sizeof(uint16_t));
             g_flexray_data.state = FLEXRAY_ERROR_FINAL;
             break;
         case FLEXRAY_ERROR_FINAL:
