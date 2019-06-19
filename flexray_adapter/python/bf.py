@@ -504,7 +504,7 @@ class BruteForceGUI(QWidget):
     for t in text.split('\n'):
       self.add_log('gdNIT: {}, {}'.format(self.bf_algo.cur_config['gdNIT'], t))
     r = []
-    r.append('Slot Cycle VF SyF NF Su SE CE BV TC VF SyF NF Su SE CE BV TC')
+    r.append('Slot Cycle VF Sy NF Su SE CE BV TC VF Sy NF Su SE CE BV TC')
     ReceivePacketsThread.parse_slot_status(ssr0, ssr1, self.monitored_slots[0], r)
     ReceivePacketsThread.parse_slot_status(ssr2, ssr3, self.monitored_slots[1], r)
     ReceivePacketsThread.parse_slot_status(ssr4, ssr5, self.monitored_slots[2], r)
