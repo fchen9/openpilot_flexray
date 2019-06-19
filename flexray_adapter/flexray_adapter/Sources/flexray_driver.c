@@ -857,6 +857,41 @@ uint8_t flexray_driver_read_rx_buffer(uint8_t rx_msg_buf_idx, uint8_t * buf_ptr,
 	return SUCCESS;
 }
 
+uint8_t flexray_driver_read_rx_frame_header_without_check(uint8_t rx_msg_buf_idx, uint8_t * header_buf_ptr) {
+    uint16_t reg_val;
+    uint16_t status;
+    uint8_t msg_buf_num;
+    uint16_t reg_offset;
+    volatile uint16_t * msg_header_ptr;
+    uint8_t payload_len;  /* In Words */
+	uint32_t msr;
+
+    msg_buf_num = g_mem_layout.individual_msg_buf_numbers[rx_msg_buf_idx];
+    reg_offset = (((uint16_t)msg_buf_num) * 4U);
+    /* Due to shadow buffer mechanism, we must read the msg buf num from FR_MBIDX. */
+    msg_buf_num = (uint8_t)(READ_FR_REGISTER16(FR_MBIDXR0_OFFSET + reg_offset));
+    if(msg_buf_num > g_mem_layout.segment2_channel_b_shadow_buf_header_idx) {
+    	DBG_PRINT("Invalid msg buf num: %u, rx msg buf idx %u", msg_buf_num, rx_msg_buf_idx);
+    	return FAILED;
+    }
+	reg_val = READ_FR_REGISTER16(FR_MBCCSR0_OFFSET + reg_offset);
+	/* MPC5748G Reference Manual 46.7.114, MTD bit is 0 for Rx msg buf */
+	if(FR_MBCCSR_MTD_U16 == (reg_val & FR_MBCCSR_MTD_U16)) {
+		DBG_PRINT("msg buf not configured for Rx: %u, rx msg buf idx %u", msg_buf_num, rx_msg_buf_idx);
+		return FAILED;
+	}
+	if(((uint8_t)(FR_MBCCSR_DUP_U16 | FR_MBCCSR_MBIF_U16)) == (reg_val & ((uint16_t) (FR_MBCCSR_DUP_U16 | FR_MBCCSR_MBIF_U16)))) {
+		WRITE_FR_REGISTER16(FR_MBCCSR0_OFFSET + reg_offset, FR_MBCCSR_LCKT_U16);
+		reg_val = READ_FR_REGISTER16(FR_MBCCSR0_OFFSET + reg_offset);
+		if(FR_MBCCSR_LCKS_U16 == (reg_val & FR_MBCCSR_LCKS_U16)) {   /* MB is locked */
+			msg_header_ptr = (volatile uint16_t *)((uint32_t)&g_fr_memory[0]) + (msg_buf_num * FR_MESSAGE_BUFFER_HEADER_SIZE);
+			memcpy((void *)header_buf_ptr, msg_header_ptr, 5);
+			WRITE_FR_REGISTER16(FR_MBCCSR0_OFFSET + reg_offset, FR_MBCCSR_LCKT_U16);
+		}
+	}
+	return SUCCESS;
+}
+
 uint8_t flexray_driver_get_clock_correction(int16_t * rate_correction, int16_t * offset_correction) {
     *rate_correction = (int16_t)READ_FR_REGISTER16(FR_RTCORVR_OFFSET);
     *offset_correction = (int16_t)READ_FR_REGISTER16(FR_OFCORVR_OFFSET);

@@ -125,11 +125,14 @@ class Connection:
     signed_reg_vals = 2
     slots_status = 2 + 8
     corrections = 4
-    if len(payload) // SIZEOF_UINT16 < (reg_vals + corrections):
+    regs_bytes = (reg_vals + signed_reg_vals + slots_status + corrections) * SIZEOF_UINT16
+    header_content_bytes = 5 * 64
+    if len(payload) // SIZEOF_UINT16 < (regs_bytes + header_content_bytes):
       raise RuntimeError("Invalid payload len for health packet: {}".format(len(payload)))
-    t = struct.unpack('>{}H{}h{}H{}h{}h'.format(
-      reg_vals, signed_reg_vals, slots_status, corrections,
-      (len(payload) // SIZEOF_UINT16) - reg_vals - signed_reg_vals - slots_status - corrections), payload)
+    t = struct.unpack('>{}H{}h{}H{}h{}B{}h'.format(
+      reg_vals, signed_reg_vals, slots_status, corrections, header_content_bytes,
+      (len(payload) - regs_bytes - header_content_bytes) // SIZEOF_UINT16),
+      payload)
     a_even_cnt = (t[5] & 0x0F00) >> 8
     b_even_cnt = (t[5] & 0xF000) >> 12
     a_odd_cnt = t[5] & 0x000F
@@ -137,11 +140,15 @@ class Connection:
     # PSR0, PSR1, PSR2, PSR3, PIFR0, RateCorrect, OffCorrect
     # casercr, cbsercr, ssr0, ssr1, ssr2, ssr3, ssr4, ssr5, ssr6, ssr7
     # max_rate_correction, max_offset_correction, min_rate_correction, min_offset_correction,
-    # a_even_cnt, b_even_cnt, a_even_cnt, a_even_cnt, sync frame table
+    # a_even_cnt, b_even_cnt, a_even_cnt, a_even_cnt,
+    # header content
+    # sync frame table
     return t[0], t[1], t[2], t[3], t[4], t[6], t[7], \
            t[8], t[9], t[10], t[11], t[12], t[13], t[14], t[15], t[16], t[17], \
            t[18], t[19], t[20], t[21], \
-           a_even_cnt, b_even_cnt, a_odd_cnt, b_odd_cnt, t[22:]
+           a_even_cnt, b_even_cnt, a_odd_cnt, b_odd_cnt, \
+           t[22:(22 + header_content_bytes)], \
+           t[(22 + header_content_bytes):]
 
   @staticmethod
   def parse_error_packet(payload):

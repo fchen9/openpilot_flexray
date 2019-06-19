@@ -389,7 +389,7 @@ class ReceivePacketsThread(QThread):
       elif pkt_type == PACKET_TYPE_HEALTH:
         psr0, psr1, psr2, psr3, pifr0, rtcor, offcor, \
         casercr, cbsercr, ssr0, ssr1, ssr2, ssr3, ssr4, ssr5, ssr6, ssr7, \
-        max_rc, max_oc, min_rc, min_oc, a_even_cnt, b_even_cnt, a_odd_cnt, b_odd_cnt, \
+        max_rc, max_oc, min_rc, min_oc, a_even_cnt, b_even_cnt, a_odd_cnt, b_odd_cnt, header_bytes, \
         sft = self._conn.parse_health_packet(payload)
         r = []
         self.parse_psr0_psr1(psr0, psr1, r)
@@ -402,7 +402,7 @@ class ReceivePacketsThread(QThread):
         if max_oc != 0 or min_oc != 0:
           r.append('Offset correction Max: {}, Min: {}'.format(max_oc, min_oc))
         self.parse_sync_frame_table(a_even_cnt, b_even_cnt, a_odd_cnt, b_odd_cnt, sft, r)
-        self._status_data_signal.emit('\n'.join(r), casercr, cbsercr, ssr0, ssr1, ssr2, ssr3, ssr4, ssr5, ssr6, ssr7)
+        self._status_data_signal.emit('\n'.join(r), casercr, cbsercr, ssr0, ssr1, ssr2, ssr3, ssr4, ssr5, ssr6, ssr7, header_bytes)
 
     @staticmethod
     def parse_slot_status(s_even, s_odd, slot, r):
@@ -1254,7 +1254,7 @@ class FlexRayGUI(QWidget):
         self.rx_bytes += payload_len
         self.rx_bytes_within_this_second += payload_len
 
-    def on_status_data(self, text, casercr, cbsercr, ssr0, ssr1, ssr2, ssr3, ssr4, ssr5, ssr6, ssr7):
+    def on_status_data(self, text, casercr, cbsercr, ssr0, ssr1, ssr2, ssr3, ssr4, ssr5, ssr6, ssr7, header_bytes):
       self.detail_status.setText(text)
       r = []
       r.append('Slot Cycle VF Sy NF Su SE CE BV TC VF Sy NF Su SE CE BV TC')
@@ -1263,6 +1263,10 @@ class FlexRayGUI(QWidget):
       ReceivePacketsThread.parse_slot_status(ssr4, ssr5, self.monitored_slots[2], r)
       ReceivePacketsThread.parse_slot_status(ssr6, ssr7, self.monitored_slots[3], r)
       self.add_file_log('Channel A ErrorCounter: {}, Channel B ErrorCounter: {}'.format(casercr, cbsercr))
+      s = ''
+      for i in range(0, 5 * 64, 5):
+        s += 'slot {}: {}'.format(i //5, ', '.join([hex(x) for x in header_bytes[i:(i+5)]]))
+      self.add_file_log(s)
       for t in r:
         self.add_file_log(t)
 

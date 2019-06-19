@@ -22,6 +22,8 @@ typedef struct {
 	packet_header msg_hdr;
 	uint16_t reg_vals[8+2+8];
 	int16_t min_max_corrections[4];
+	/* For bruteforce*/
+	uint8_t header_content[5 * 64];
 	/* Sync frame ID/Deviation tables. */
 	uint16_t sync_frame_table[60];
 }status_data_msg;
@@ -69,6 +71,7 @@ static void process_packet(const packet_header *pkt_header) {
 	uint16_t payload_length = 0U;
 	uint8_t ret = FAILED;
 	uint8_t a_even_cnt = 0, b_even_cnt = 0, a_odd_cnt = 0, b_odd_cnt = 0;
+    uint8_t i = 0U;
 	packet_header send_pkt_header;
 	switch(EXTRACT_PACKET_FLAG_TYPE(pkt_header->flags)) {
 		case PACKET_TYPE_START_DRIVER:
@@ -122,6 +125,13 @@ static void process_packet(const packet_header *pkt_header) {
 					&s_status_data_packet.reg_vals[6],
 					&s_status_data_packet.reg_vals[7]);
 			flexray_driver_get_slots_status(&s_status_data_packet.reg_vals[8], &s_status_data_packet.reg_vals[9], &s_status_data_packet.reg_vals[10]);
+			for(i = 0; i < sizeof(s_status_data_packet.header_content); i++)
+				s_status_data_packet.header_content[i] = 0;
+			for(i = 0; i < (uint8_t)g_fr_config.individual_rx_msg_buf_count; i++) {
+				if(i >= 64)
+					break;
+				flexray_driver_read_rx_frame_header_without_check(i, &s_status_data_packet.header_content[i * 5]);
+			}
 			flexray_driver_get_sync_frame_table(&s_status_data_packet.sync_frame_table[0], &a_even_cnt, &b_even_cnt, &a_odd_cnt, &b_odd_cnt, &s_status_data_packet.reg_vals[5]);
 			memcpy(&s_status_data_packet.min_max_corrections[0], &g_flexray_data.max_rate_correction, sizeof(s_status_data_packet.min_max_corrections));
 			tcp_interface_send_packet(PACKET_TYPE_HEALTH,
