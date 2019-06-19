@@ -1243,7 +1243,26 @@ class FlexRayGUI(QWidget):
         self.rx_bytes_within_this_second += payload_len
 
     def on_status_data(self, text, ssr0, ssr1, ssr2, ssr3, ssr4, ssr5, ssr6, ssr7):
-        self.detail_status.setText(text)
+      self.detail_status.setText(text)
+      r = []
+      r.append('Slot {} status, even cycle'.format(self.monitored_slots[0]))
+      ReceivePacketsThread.parse_slot_status(ssr0, r)
+      r.append('Slot {} status, odd cycle'.format(self.monitored_slots[0]))
+      ReceivePacketsThread.parse_slot_status(ssr1, r)
+      r.append('Slot {} status, even cycle'.format(self.monitored_slots[1]))
+      ReceivePacketsThread.parse_slot_status(ssr2, r)
+      r.append('Slot {} status, odd cycle'.format(self.monitored_slots[1]))
+      ReceivePacketsThread.parse_slot_status(ssr3, r)
+      r.append('Slot {} status, even cycle'.format(self.monitored_slots[2]))
+      ReceivePacketsThread.parse_slot_status(ssr4, r)
+      r.append('Slot {} status, odd cycle'.format(self.monitored_slots[2]))
+      ReceivePacketsThread.parse_slot_status(ssr5, r)
+      r.append('Slot {} status, even cycle'.format(self.monitored_slots[3]))
+      ReceivePacketsThread.parse_slot_status(ssr6, r)
+      r.append('Slot {} status, odd cycle'.format(self.monitored_slots[3]))
+      ReceivePacketsThread.parse_slot_status(ssr7, r)
+      for t in r:
+        self.add_log(t)
 
     def clear_rx_frame_table(self):
         self.frame_table.clearContents()
