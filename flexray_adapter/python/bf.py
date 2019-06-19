@@ -499,7 +499,7 @@ class BruteForceGUI(QWidget):
     self.rx_bytes += payload_len
     self.rx_bytes_within_this_second += payload_len
 
-  def on_status_data(self, text, ssr0, ssr1, ssr2, ssr3, ssr4, ssr5, ssr6, ssr7):
+  def on_status_data(self, text, casercr, cbsercr, ssr0, ssr1, ssr2, ssr3, ssr4, ssr5, ssr6, ssr7):
     self.detail_status.setText(text)
     for t in text.split('\n'):
       self.add_log('gdNIT: {}, {}'.format(self.bf_algo.cur_config['gdNIT'], t))
@@ -508,6 +508,7 @@ class BruteForceGUI(QWidget):
     ReceivePacketsThread.parse_slot_status(ssr2, ssr3, self.monitored_slots[1], r)
     ReceivePacketsThread.parse_slot_status(ssr4, ssr5, self.monitored_slots[2], r)
     ReceivePacketsThread.parse_slot_status(ssr6, ssr7, self.monitored_slots[3], r)
+    self.add_file_log('Channel A ErrorCounter: {}, Channel B ErrorCounter: {}'.format(casercr, cbsercr))
     for t in r:
       self.add_file_log(t)
 

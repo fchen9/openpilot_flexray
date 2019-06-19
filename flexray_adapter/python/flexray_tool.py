@@ -205,7 +205,7 @@ class ReceivePacketsThread(QThread):
     _flexray_fatal_error_signal = pyqtSignal('int')
     _exit_signal = pyqtSignal()
     _exception_signal = pyqtSignal('QString')
-    _status_data_signal = pyqtSignal('QString', 'int', 'int', 'int', 'int', 'int', 'int', 'int', 'int')
+    _status_data_signal = pyqtSignal('QString', 'int', 'int', 'int', 'int', 'int', 'int', 'int', 'int', 'int', 'int')
 
     def __init__(self, conn, on_frame_received, on_exit, on_exception, on_joined_cluster, on_disonnected_from_cluster,
                  on_join_cluster_failed, on_fatal_error, on_status_data):
@@ -402,7 +402,7 @@ class ReceivePacketsThread(QThread):
         if max_oc != 0 or min_oc != 0:
           r.append('Offset correction Max: {}, Min: {}'.format(max_oc, min_oc))
         self.parse_sync_frame_table(a_even_cnt, b_even_cnt, a_odd_cnt, b_odd_cnt, sft, r)
-        self._status_data_signal.emit('\n'.join(r), ssr0, ssr1, ssr2, ssr3, ssr4, ssr5, ssr6, ssr7)
+        self._status_data_signal.emit('\n'.join(r), casercr, cbsercr, ssr0, ssr1, ssr2, ssr3, ssr4, ssr5, ssr6, ssr7)
 
     @staticmethod
     def parse_slot_status(s_even ,s_odd, id, r):
@@ -410,7 +410,7 @@ class ReceivePacketsThread(QThread):
       x += 'VF: {}, '.format(1 if (s_even & FR_SSR_VFB) else 0)
       x += 'SyF: {}, '.format(1 if (s_even & FR_SSR_SYB) else 0)
       x += 'NF: {}, '.format(1 if (s_even & FR_SSR_NFB) else 0)
-      x += 'SuF: {}, '.format(1 if (s_even & FR_SSR_SUB) else 0)
+      x += 'Su: {}, '.format(1 if (s_even & FR_SSR_SUB) else 0)
       x += 'SE: {}, '.format(1 if (s_even & FR_SSR_SEB) else 0)
       x += 'CE : {}, '.format(1 if (s_even & FR_SSR_CEB) else 0)
       x += 'BV : {}, '.format(1 if (s_even & FR_SSR_BVB) else 0)
@@ -419,7 +419,7 @@ class ReceivePacketsThread(QThread):
       x += 'VF: {}, '.format(1 if (s_odd & FR_SSR_VFA) else 0)
       x += 'SyF: {}, '.format(1 if (s_odd & FR_SSR_SYA) else 0)
       x += 'NF: {}, '.format(1 if (s_odd & FR_SSR_NFA) else 0)
-      x += 'SuF: {}, '.format(1 if (s_odd & FR_SSR_SUA) else 0)
+      x += 'Su: {}, '.format(1 if (s_odd & FR_SSR_SUA) else 0)
       x += 'SE: {}, '.format(1 if (s_odd & FR_SSR_SEA) else 0)
       x += 'CE : {}, '.format(1 if (s_odd & FR_SSR_CEA) else 0)
       x += 'BV : {}, '.format(1 if (s_odd & FR_SSR_BVA) else 0)
@@ -1271,13 +1271,14 @@ class FlexRayGUI(QWidget):
         self.rx_bytes += payload_len
         self.rx_bytes_within_this_second += payload_len
 
-    def on_status_data(self, text, ssr0, ssr1, ssr2, ssr3, ssr4, ssr5, ssr6, ssr7):
+    def on_status_data(self, text, casercr, cbsercr, ssr0, ssr1, ssr2, ssr3, ssr4, ssr5, ssr6, ssr7):
       self.detail_status.setText(text)
       r = []
       ReceivePacketsThread.parse_slot_status(ssr0, ssr1, self.monitored_slots[0], r)
       ReceivePacketsThread.parse_slot_status(ssr2, ssr3, self.monitored_slots[1], r)
       ReceivePacketsThread.parse_slot_status(ssr4, ssr5, self.monitored_slots[2], r)
       ReceivePacketsThread.parse_slot_status(ssr6, ssr7, self.monitored_slots[3], r)
+      self.add_file_log('Channel A ErrorCounter: {}, Channel B ErrorCounter: {}'.format(casercr, cbsercr))
       for t in r:
         self.add_file_log(t)
 
