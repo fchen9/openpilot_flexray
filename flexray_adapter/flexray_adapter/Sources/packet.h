@@ -23,6 +23,8 @@
 #define PACKET_TYPE_FLEXRAY_DISCONNECTED_FROM_CLUSTER 5U
 /* Fatal error, should not happen. */
 #define PACKET_TYPE_FLEXRAY_FATAL_ERROR 6U
+/* Set monitored slot numbers. */
+#define PACKET_TYPE_MONIOR_SLOTS 7U
 
 #define EXTRACT_PACKET_FLAG_TYPE(flags) (flags >> 11)
 #define SET_PACKET_FLAG_TYPE(flags, type) do {flags = ((flags & 0x07FFU) | (((uint16_t)type) << 11));} while(0);

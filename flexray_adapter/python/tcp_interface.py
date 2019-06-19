@@ -59,6 +59,9 @@ class Connection:
     self.health_thd = HealthThd(self)
     self.health_thd.start()
 
+  def set_monitored_slots(self, slot_ids):
+    self.send_packet(PACKET_TYPE_MONIOR_SLOTS, struct.pack('>4H', *slot_ids))
+
   def close(self):
     if self.health_thd:
       self.health_thd.stop()
@@ -118,21 +121,26 @@ class Connection:
       return None
     if len(payload) % SIZEOF_UINT16 != 0:
       raise RuntimeError("Invalid payload len for health packet: {}".format(len(payload)))
-    reg_vals = 8
+    reg_vals = 6  # unsigned reg val
     signed_reg_vals = 2
+    slots_status = 8
     corrections = 4
     if len(payload) // SIZEOF_UINT16 < (reg_vals + corrections):
       raise RuntimeError("Invalid payload len for health packet: {}".format(len(payload)))
-    t = struct.unpack('>{}H{}h{}h{}h'.format(reg_vals - signed_reg_vals, signed_reg_vals, corrections, len(payload) // SIZEOF_UINT16 - reg_vals - corrections), payload)
+    t = struct.unpack('>{}H{}h{}H{}h{}h'.format(
+      reg_vals, signed_reg_vals, slots_status, corrections,
+      (len(payload) // SIZEOF_UINT16) - reg_vals - signed_reg_vals - slots_status - corrections), payload)
     a_even_cnt = (t[5] & 0x0F00) >> 8
     b_even_cnt = (t[5] & 0xF000) >> 12
     a_odd_cnt = t[5] & 0x000F
     b_odd_cnt = (t[5] & 0x00F0) >> 4
     # PSR0, PSR1, PSR2, PSR3, PIFR0, RateCorrect, OffCorrect
+    # slot1_status, slot2_status, slot3_status, slot4_status
     # max_rate_correction, max_offset_correction, min_rate_correction, min_offset_correction,
     # a_even_cnt, b_even_cnt, a_even_cnt, a_even_cnt, sync frame table
     return t[0], t[1], t[2], t[3], t[4], t[6], t[7], \
            t[8], t[9], t[10], t[11], \
+           t[12], t[13], t[14], t[15], \
            a_even_cnt, b_even_cnt, a_odd_cnt, b_odd_cnt, t[12:]
 
   @staticmethod

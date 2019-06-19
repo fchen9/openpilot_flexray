@@ -20,7 +20,7 @@
 
 typedef struct {
 	packet_header msg_hdr;
-	uint16_t reg_vals[8];
+	uint16_t reg_vals[8+2+8];
 	int16_t min_max_corrections[4];
 	/* Sync frame ID/Deviation tables. */
 	uint16_t sync_frame_table[60];
@@ -121,12 +121,19 @@ static void process_packet(const packet_header *pkt_header) {
 					&s_status_data_packet.reg_vals[4],
 					&s_status_data_packet.reg_vals[6],
 					&s_status_data_packet.reg_vals[7]);
+			flexray_driver_get_slots_status(&s_status_data_packet.reg_vals[8], &s_status_data_packet.reg_vals[9], &s_status_data_packet.reg_vals[10]);
 			flexray_driver_get_sync_frame_table(&s_status_data_packet.sync_frame_table[0], &a_even_cnt, &b_even_cnt, &a_odd_cnt, &b_odd_cnt, &s_status_data_packet.reg_vals[5]);
 			memcpy(&s_status_data_packet.min_max_corrections[0], &g_flexray_data.max_rate_correction, sizeof(s_status_data_packet.min_max_corrections));
 			tcp_interface_send_packet(PACKET_TYPE_HEALTH,
 					(packet_header *)&s_status_data_packet,
 					sizeof(s_status_data_packet.reg_vals) + sizeof(s_status_data_packet.min_max_corrections) + (a_even_cnt + b_even_cnt + a_odd_cnt + b_odd_cnt) * sizeof(uint16_t) * 2);
-
+			break;
+		case PACKET_TYPE_MONIOR_SLOTS:
+			if(s_bytes_in_pkt_parse_buf != (sizeof(packet_header) + sizeof(uint16_t) * 4)) {
+				DBG_PRINT("Invalid PACKET_TYPE_MONIOR_SLOTS msg length: %u", s_bytes_in_pkt_parse_buf );
+				break;
+			}
+			flexray_driver_monitor_slots((uint16_t *)(pkt_header + 1));
 	}
 	s_bytes_in_pkt_parse_buf = 0;
 }

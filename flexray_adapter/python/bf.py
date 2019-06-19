@@ -10,7 +10,7 @@ import yaml
 from datetime import datetime
 from PyQt5.QtWidgets import (
     QWidget, QGroupBox, QPushButton, QMessageBox, QVBoxLayout, QSplitter, QHBoxLayout, QLabel, QListWidget,
-    QDialog, QGridLayout, QApplication, QStyle)
+    QDialog, QGridLayout, QApplication, QStyle, QSpinBox)
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QIcon
 from flexray_config import (default_fr_config, verify_config, verify_config_format)
@@ -45,13 +45,6 @@ def factors(n):
       results.add(i)
       results.add(int(n / i))
   return results
-
-# Brute-force algorthm for finding out the correct length of dynamic segment(gdMinislot * gNumberOfMinislots).
-# Based on constraint 18 equation in flexray spec.
-# 1) Assume we already have the correct values  of gMacroPerCycle, gdStaticSlot, gNumberOfStaticSlots.
-# 2) Assume gdSymbolWindow is zero.
-# 3) Try all possible values of gdNIT, calculate the value of gdMinislot * gNumberOfMinislots.
-# 4) Generate a valid pair of gdMinislot and gNumberOfMinislots for every possible value of gdNIT
 
 class BFAlgo2:
   def __init__(self, config):
@@ -132,6 +125,12 @@ class BFAlgo2:
     return r
 
 
+# Brute-force algorthm for finding out the correct length of dynamic segment(gdMinislot * gNumberOfMinislots).
+# Based on constraint 18 equation in flexray spec.
+# 1) Assume we already have the correct values  of gMacroPerCycle, gdStaticSlot, gNumberOfStaticSlots.
+# 2) Assume gdSymbolWindow is zero.
+# 3) Try all possible values of gdNIT, calculate the value of gdMinislot * gNumberOfMinislots.
+# 4) Generate a valid pair of gdMinislot and gNumberOfMinislots for every possible value of gdNIT
 class BFAlgo1:
   def __init__(self, config):
     # Initial config
@@ -215,7 +214,6 @@ class BruteForceGUI(QWidget):
     self.connect_timer.timeout.connect(self.on_connect_timer)
     self.connect_timer.setSingleShot(True)
     self.recv_packets_thread = None
-    self.conn = None
     self.connected = False
     self.cur_config = default_fr_config
     self.tx_frames = self.tx_bytes = self.tx_bps = self.tx_bytes_within_this_second = 0
@@ -270,6 +268,21 @@ class BruteForceGUI(QWidget):
     stats_gb = QGroupBox('Status')
     stats_gb.setLayout(layout)
 
+    self.monitored_slots = [8, 24, 31, 45]
+    layout = QHBoxLayout()
+    for i in range(4):
+      w = QSpinBox()
+      w.setMinimum(0)
+      w.setMaximum(127)
+      w.setValue(self.monitored_slots[i])
+      w.valueChanged.connect(lambda val,i=i: self.set_monitored_slots(i, val))
+      layout.addWidget(w)
+    btn = QPushButton("&Upate")
+    btn.clicked.connect(self.send_monitored_slots)
+    layout.addWidget(btn)
+    monitored_slots_form = QGroupBox('Monitored Slots')
+    monitored_slots_form.setLayout(layout)
+
     self.log_lv = QListWidget()
     logs_gb_layout = QVBoxLayout()
     logs_gb_layout.addWidget(self.log_lv)
@@ -287,6 +300,7 @@ class BruteForceGUI(QWidget):
     layout.addWidget(tool_bar)
     layout.addWidget(stats_gb)
     layout.addWidget(progress_gb)
+    layout.addWidget(monitored_slots_form)
     w = QWidget()
     w.setLayout(layout)
     splitter = QSplitter(Qt.Vertical, self)
@@ -309,6 +323,14 @@ class BruteForceGUI(QWidget):
       if self.connect_timer.isActive():
         self.connect_timer.stop()
       ev.accept()
+
+  def set_monitored_slots(self, i, val):
+    self.monitored_slots[i] = val
+
+  def send_monitored_slots(self):
+    self.add_log('Set monitored slots: {}, {}, {}, {}'.format(*self.monitored_slots))
+    if self.conn:
+      self.conn.set_monitored_slots(self.monitored_slots)
 
   def add_log(self, text):
     t = datetime.now().strftime('%H:%M:%S.%f')[:-3]
@@ -399,6 +421,7 @@ class BruteForceGUI(QWidget):
   # Handle TCP connection error
   def on_connect_failed(self, e):
     self.conn.close()
+    self.conn = None
     self.add_log(e)
     self.detail_status.setText('')
     self.status_label_left.setText('   Connect failed.   ')
@@ -413,6 +436,7 @@ class BruteForceGUI(QWidget):
     self.recv_packets_thread.wait()
     self.recv_packets_thread = None
     self.conn.close()
+    self.conn = None
     self.detail_status.setText('')
     self.status_label_left.setText('   Disconnected.   ')
     self.status_label_left.setStyleSheet(self.disconnected_text_style)

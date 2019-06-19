@@ -926,6 +926,40 @@ uint8_t flexray_driver_get_status_registers(
 	return SUCCESS;
 }
 
+uint8_t flexray_driver_monitor_slots(uint16_t *slot_ids) {
+	uint16_t reg_val, i = 0;
+    if(!CC_ENABLED) {
+    	return FAILED;
+    }
+	/* MPC5748G Ref Manual Table 46-10 */
+	reg_val = FR_SSSR0_U16 | slot_ids[0];     /* Configure the slot id which SSR0, SSR1 is monitoring */
+	WRITE_FR_REGISTER16(FR_SSSR_OFFSET, reg_val);
+	reg_val = FR_SSSR1_U16 | slot_ids[1];     /* Configure the slot id which SSR2, SSR3 is monitoring */
+	WRITE_FR_REGISTER16(FR_SSSR_OFFSET, reg_val);
+	reg_val = FR_SSSR2_U16 | slot_ids[2];     /* Configure the slot id which SSR4, SSR5 is monitoring */
+	WRITE_FR_REGISTER16(FR_SSSR_OFFSET, reg_val);
+	reg_val = FR_SSSR3_U16 | slot_ids[3];     /* Configure the slot id which SSR6, SSR7 is monitoring */
+	WRITE_FR_REGISTER16(FR_SSSR_OFFSET, reg_val);
+	return SUCCESS;
+}
+
+uint8_t flexray_driver_get_slots_status(uint16_t *casercr, uint16_t *cbsercr, uint16_t *slots) {
+    if(!CC_ENABLED) {
+    	return FAILED;
+    }
+	*casercr = READ_FR_REGISTER16(FR_CASERCR_OFFSET);
+	*cbsercr = READ_FR_REGISTER16(FR_CBSERCR_OFFSET);
+	slots[0] = READ_FR_REGISTER16(FR_SSR0_OFFSET);
+	slots[1] = READ_FR_REGISTER16(FR_SSR1_OFFSET);
+	slots[2] = READ_FR_REGISTER16(FR_SSR2_OFFSET);
+	slots[3] = READ_FR_REGISTER16(FR_SSR3_OFFSET);
+	slots[4] = READ_FR_REGISTER16(FR_SSR4_OFFSET);
+	slots[5] = READ_FR_REGISTER16(FR_SSR5_OFFSET);
+	slots[6] = READ_FR_REGISTER16(FR_SSR6_OFFSET);
+	slots[7] = READ_FR_REGISTER16(FR_SSR7_OFFSET);
+	return SUCCESS;
+}
+
 static uint8_t init_memory_area_layout() {
 	uint32_t static_slot_msg_buf_count = 0U, dynamic_slot_msg_buf_count = 0U;
 	uint32_t fifoa_depth = 0U, fifob_depth = 0U, fifo_msg_buf_begin_offset = 0U, fifo_msg_buf_begin_header_index = 0U;

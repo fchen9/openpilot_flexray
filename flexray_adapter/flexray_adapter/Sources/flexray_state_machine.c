@@ -168,25 +168,27 @@ void flexray_run()
             	break;
             }
 			if(FR_PSR0_PROTSTATE_READY_U16 == poc_state.state) {
-				/* Allow the node to be a coldstart node */
-				ret = flexray_driver_allow_coldstart();
-				/* Check the status */
-				if(SUCCESS != ret) {   /* An error has occurred - go to the error state */
-					g_flexray_data.state = FLEXRAY_ERROR;
-					g_flexray_data.error = FR_ERROR_INIT_ALLOWCOLDSTART;
-					DBG_PRINT("flexray_driver_allow_coldstart error %u", ret);
-				} else {    /* No error, so join the cluster */
-					 ret = flexray_driver_start_communication();
-					 /* Check success of the call (not of the integration to cluster) */
-					 if(SUCCESS != ret) {   /* An error has occurred - go to the error state */
-						 g_flexray_data.state = FLEXRAY_ERROR;
-						 g_flexray_data.error = FR_ERROR_INIT_START_COMM;
-						 DBG_PRINT("flexray_driver_start_communication error %u", ret);
-					 } else {   /* No error, the controller started joining the cluster - go to the next state */
-						 g_flexray_data.state = FLEXRAY_JOINING_CLUSTER;
-						 DBG_PRINT("Joining cluster...");
-					 }
+				if(g_fr_config.pKeySlotUsedForStartup != 0U) {
+					/* Allow the node to be a coldstart node */
+					ret = flexray_driver_allow_coldstart();
+					/* Check the status */
+					if(SUCCESS != ret) {   /* An error has occurred - go to the error state */
+						g_flexray_data.state = FLEXRAY_ERROR;
+						g_flexray_data.error = FR_ERROR_INIT_ALLOWCOLDSTART;
+						DBG_PRINT("flexray_driver_allow_coldstart error %u", ret);
+						break;
+					}
 				}
+				 ret = flexray_driver_start_communication();
+				 /* Check success of the call (not of the integration to cluster) */
+				 if(SUCCESS != ret) {   /* An error has occurred - go to the error state */
+					 g_flexray_data.state = FLEXRAY_ERROR;
+					 g_flexray_data.error = FR_ERROR_INIT_START_COMM;
+					 DBG_PRINT("flexray_driver_start_communication error %u", ret);
+				 } else {   /* No error, the controller started joining the cluster - go to the next state */
+					 g_flexray_data.state = FLEXRAY_JOINING_CLUSTER;
+					 DBG_PRINT("Joining cluster...");
+				 }
 			} else {   /* The FlexRay controller has not reached the POC:Ready yet */
 				if(0 < g_flexray_data.wait_poc_ready_cycles_counter) {
 					g_flexray_data.wait_poc_ready_cycles_counter--;
