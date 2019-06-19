@@ -409,23 +409,26 @@ class ReceivePacketsThread(QThread):
         self._status_data_signal.emit('\n'.join(r), ssr0, ssr1, ssr2, ssr3, ssr4, ssr5, ssr6, ssr7)
 
     @staticmethod
-    def parse_slot_status(s, r):
-      r.append('Channel B vSS!ValidFrame: {}'.format(1 if (s & FR_SSR_VFB) else 0))
-      r.append('Channel B vRF!Header!SyFIndicator: {}'.format(1 if (s & FR_SSR_SYB) else 0))
-      r.append('Channel B vRF!Header!NFIndicator: {}'.format(1 if (s & FR_SSR_NFB) else 0))
-      r.append('Channel B vRF!Header!SuFIndicator: {}'.format(1 if (s & FR_SSR_SUB) else 0))
-      r.append('Channel B vSS!SyntaxError: {}'.format(1 if (s & FR_SSR_SEB) else 0))
-      r.append('Channel B vSS!ContentError : {}'.format(1 if (s & FR_SSR_CEB) else 0))
-      r.append('Channel B vSS!BViolation : {}'.format(1 if (s & FR_SSR_BVB) else 0))
-      r.append('Channel B vSS!TxConflict : {}'.format(1 if (s & FR_SSR_TCB) else 0))
-      r.append('Channel A vSS!ValidFrame: {}'.format(1 if (s & FR_SSR_VFA) else 0))
-      r.append('Channel A vRF!Header!SyFIndicator: {}'.format(1 if (s & FR_SSR_SYA) else 0))
-      r.append('Channel A vRF!Header!NFIndicator: {}'.format(1 if (s & FR_SSR_NFA) else 0))
-      r.append('Channel A vRF!Header!SuFIndicator: {}'.format(1 if (s & FR_SSR_SUA) else 0))
-      r.append('Channel A vSS!SyntaxError: {}'.format(1 if (s & FR_SSR_SEA) else 0))
-      r.append('Channel A vSS!ContentError : {}'.format(1 if (s & FR_SSR_CEA) else 0))
-      r.append('Channel A vSS!BViolation : {}'.format(1 if (s & FR_SSR_BVA) else 0))
-      r.append('Channel A vSS!TxConflict : {}'.format(1 if (s & FR_SSR_TCA) else 0))
+    def parse_slot_status(s_even ,s_odd, id, r):
+      x = 'Slot {}, Even cycle, Chan B, '.format(id)
+      x += 'VF: {}, '.format(1 if (s_even & FR_SSR_VFB) else 0)
+      x += 'SyF: {}, '.format(1 if (s_even & FR_SSR_SYB) else 0)
+      x += 'NF: {}, '.format(1 if (s_even & FR_SSR_NFB) else 0)
+      x += 'SuF: {}, '.format(1 if (s_even & FR_SSR_SUB) else 0)
+      x += 'SE: {}, '.format(1 if (s_even & FR_SSR_SEB) else 0)
+      x += 'CE : {}, '.format(1 if (s_even & FR_SSR_CEB) else 0)
+      x += 'BV : {}, '.format(1 if (s_even & FR_SSR_BVB) else 0)
+      x += 'TC : {}, '.format(1 if (s_even & FR_SSR_TCB) else 0)
+      x += 'Odd cycle, Chan A, '
+      x += 'VF: {}, '.format(1 if (s_odd & FR_SSR_VFA) else 0)
+      x += 'SyF: {}, '.format(1 if (s_odd & FR_SSR_SYA) else 0)
+      x += 'NF: {}, '.format(1 if (s_odd & FR_SSR_NFA) else 0)
+      x += 'SuF: {}, '.format(1 if (s_odd & FR_SSR_SUA) else 0)
+      x += 'SE: {}, '.format(1 if (s_odd & FR_SSR_SEA) else 0)
+      x += 'CE : {}, '.format(1 if (s_odd & FR_SSR_CEA) else 0)
+      x += 'BV : {}, '.format(1 if (s_odd & FR_SSR_BVA) else 0)
+      x += 'TC : {}, '.format(1 if (s_odd & FR_SSR_TCA) else 0)
+      r.append(x)
 
     def on_peer_shutdown(self):
         self.stop()
@@ -1129,6 +1132,11 @@ class FlexRayGUI(QWidget):
         self.log_lv.addItem(t)
         self.log_lv.scrollToBottom()
 
+    def add_file_log(self, text):
+      t = datetime.now().strftime('%H:%M:%S.%f')[:-3]
+      with open(os.path.expanduser("~/.flexray_adapter/flexray_tool.log"), 'a', encoding='utf-8') as f:
+        f.write(t + text + '\n')
+
     def connect_or_disconnect(self):
         if not self.recv_packets_thread:
             connect_dlg = ConnectOrConfigDialog(self.cur_config, mode='connect')
@@ -1270,24 +1278,12 @@ class FlexRayGUI(QWidget):
     def on_status_data(self, text, ssr0, ssr1, ssr2, ssr3, ssr4, ssr5, ssr6, ssr7):
       self.detail_status.setText(text)
       r = []
-      r.append('Slot {} status, even cycle'.format(self.monitored_slots[0]))
-      ReceivePacketsThread.parse_slot_status(ssr0, r)
-      r.append('Slot {} status, odd cycle'.format(self.monitored_slots[0]))
-      ReceivePacketsThread.parse_slot_status(ssr1, r)
-      r.append('Slot {} status, even cycle'.format(self.monitored_slots[1]))
-      ReceivePacketsThread.parse_slot_status(ssr2, r)
-      r.append('Slot {} status, odd cycle'.format(self.monitored_slots[1]))
-      ReceivePacketsThread.parse_slot_status(ssr3, r)
-      r.append('Slot {} status, even cycle'.format(self.monitored_slots[2]))
-      ReceivePacketsThread.parse_slot_status(ssr4, r)
-      r.append('Slot {} status, odd cycle'.format(self.monitored_slots[2]))
-      ReceivePacketsThread.parse_slot_status(ssr5, r)
-      r.append('Slot {} status, even cycle'.format(self.monitored_slots[3]))
-      ReceivePacketsThread.parse_slot_status(ssr6, r)
-      r.append('Slot {} status, odd cycle'.format(self.monitored_slots[3]))
-      ReceivePacketsThread.parse_slot_status(ssr7, r)
+      ReceivePacketsThread.parse_slot_status(ssr0, ssr1, self.monitored_slots[0], r)
+      ReceivePacketsThread.parse_slot_status(ssr2, ssr3, self.monitored_slots[1], r)
+      ReceivePacketsThread.parse_slot_status(ssr4, ssr5, self.monitored_slots[2], r)
+      ReceivePacketsThread.parse_slot_status(ssr6, ssr7, self.monitored_slots[3], r)
       for t in r:
-        self.add_log(t)
+        self.add_file_log(t)
 
     def clear_rx_frame_table(self):
         self.frame_table.clearContents()
