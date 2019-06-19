@@ -127,7 +127,7 @@ class Connection:
     corrections = 4
     regs_bytes = (reg_vals + signed_reg_vals + slots_status + corrections) * SIZEOF_UINT16
     header_content_bytes = 5 * 64
-    if len(payload) // SIZEOF_UINT16 < (regs_bytes + header_content_bytes):
+    if len(payload) < (regs_bytes + header_content_bytes):
       raise RuntimeError("Invalid payload len for health packet: {}".format(len(payload)))
     t = struct.unpack('>{}H{}h{}H{}h{}B{}h'.format(
       reg_vals, signed_reg_vals, slots_status, corrections, header_content_bytes,

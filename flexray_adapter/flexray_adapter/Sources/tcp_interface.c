@@ -136,7 +136,7 @@ static void process_packet(const packet_header *pkt_header) {
 			memcpy(&s_status_data_packet.min_max_corrections[0], &g_flexray_data.max_rate_correction, sizeof(s_status_data_packet.min_max_corrections));
 			tcp_interface_send_packet(PACKET_TYPE_HEALTH,
 					(packet_header *)&s_status_data_packet,
-					sizeof(s_status_data_packet.reg_vals) + sizeof(s_status_data_packet.min_max_corrections) + (a_even_cnt + b_even_cnt + a_odd_cnt + b_odd_cnt) * sizeof(uint16_t) * 2);
+					sizeof(s_status_data_packet.reg_vals) + sizeof(s_status_data_packet.min_max_corrections) + sizeof(s_status_data_packet.header_content) + (a_even_cnt + b_even_cnt + a_odd_cnt + b_odd_cnt) * sizeof(uint16_t) * 2);
 			break;
 		case PACKET_TYPE_MONIOR_SLOTS:
 			if(s_bytes_in_pkt_parse_buf != (sizeof(packet_header) + sizeof(uint16_t) * 4)) {
