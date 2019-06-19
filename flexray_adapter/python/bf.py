@@ -494,10 +494,29 @@ class BruteForceGUI(QWidget):
     self.rx_bytes += payload_len
     self.rx_bytes_within_this_second += payload_len
 
-  def on_status_data(self, text):
+  def on_status_data(self, text, ssr0, ssr1, ssr2, ssr3, ssr4, ssr5, ssr6, ssr7):
     self.detail_status.setText(text)
     for t in text.split('\n'):
       self.add_log('gdNIT: {}, {}'.format(self.bf_algo.cur_config['gdNIT'], t))
+    r = []
+    r.append('Slot {} status, even cycle'.format(self.monitored_slots[0]))
+    ReceivePacketsThread.parse_slot_status(ssr0, r)
+    r.append('Slot {} status, odd cycle'.format(self.monitored_slots[0]))
+    ReceivePacketsThread.parse_slot_status(ssr1, r)
+    r.append('Slot {} status, even cycle'.format(self.monitored_slots[1]))
+    ReceivePacketsThread.parse_slot_status(ssr2, r)
+    r.append('Slot {} status, odd cycle'.format(self.monitored_slots[1]))
+    ReceivePacketsThread.parse_slot_status(ssr3, r)
+    r.append('Slot {} status, even cycle'.format(self.monitored_slots[2]))
+    ReceivePacketsThread.parse_slot_status(ssr4, r)
+    r.append('Slot {} status, odd cycle'.format(self.monitored_slots[2]))
+    ReceivePacketsThread.parse_slot_status(ssr5, r)
+    r.append('Slot {} status, even cycle'.format(self.monitored_slots[3]))
+    ReceivePacketsThread.parse_slot_status(ssr6, r)
+    r.append('Slot {} status, odd cycle'.format(self.monitored_slots[3]))
+    ReceivePacketsThread.parse_slot_status(ssr7, r)
+    for t in r:
+      self.add_log(t)
 
   def update_statistics_label(self):
     if self.tx_bps > 1000:

@@ -390,7 +390,10 @@ class ReceivePacketsThread(QThread):
         t = self._conn.parse_health_packet(payload)
         if not t:
           return
-        psr0, psr1, psr2, psr3, pifr0, rtcor, offcor, max_rc, max_oc, min_rc, min_oc, a_even_cnt, b_even_cnt, a_odd_cnt, b_odd_cnt, sft = t
+        psr0, psr1, psr2, psr3, pifr0, rtcor, offcor, \
+        ssr0, ssr1, ssr2, ssr3, ssr4, ssr5, ssr6, ssr7, \
+        max_rc, max_oc, min_rc, min_oc, a_even_cnt, b_even_cnt, a_odd_cnt, b_odd_cnt, \
+        sft = self._conn.parse_health_packet(payload)
         r = []
         self.parse_psr0_psr1(psr0, psr1, r)
         self.parse_psr2(psr2, r)
@@ -403,7 +406,26 @@ class ReceivePacketsThread(QThread):
         if max_oc != 0 or min_oc != 0:
           r.append('Offset correction Max: {}, Min: {}'.format(max_oc, min_oc))
         self.parse_sync_frame_table(a_even_cnt, b_even_cnt, a_odd_cnt, b_odd_cnt, sft, r)
-        self._status_data_signal.emit('\n'.join(r))
+        self._status_data_signal.emit('\n'.join(r, ssr0, ssr1, ssr2, ssr3, ssr4, ssr5, ssr6, ssr7))
+
+    @staticmethod
+    def parse_slot_status(s, r):
+      r.append('Channel B vSS!ValidFrame: {}'.format(1 if (s & FR_SSR_VFB) else 0))
+      r.append('Channel B vRF!Header!SyFIndicator: {}'.format(1 if (s & FR_SSR_SYB) else 0))
+      r.append('Channel B vRF!Header!NFIndicator: {}'.format(1 if (s & FR_SSR_NFB) else 0))
+      r.append('Channel B vRF!Header!SuFIndicator: {}'.format(1 if (s & FR_SSR_SUB) else 0))
+      r.append('Channel B vSS!SyntaxError: {}'.format(1 if (s & FR_SSR_SEB) else 0))
+      r.append('Channel B vSS!ContentError : {}'.format(1 if (s & FR_SSR_CEB) else 0))
+      r.append('Channel B vSS!BViolation : {}'.format(1 if (s & FR_SSR_BVB) else 0))
+      r.append('Channel B vSS!TxConflict : {}'.format(1 if (s & FR_SSR_TCB) else 0))
+      r.append('Channel A vSS!ValidFrame: {}'.format(1 if (s & FR_SSR_VFA) else 0))
+      r.append('Channel A vRF!Header!SyFIndicator: {}'.format(1 if (s & FR_SSR_SYA) else 0))
+      r.append('Channel A vRF!Header!NFIndicator: {}'.format(1 if (s & FR_SSR_NFA) else 0))
+      r.append('Channel A vRF!Header!SuFIndicator: {}'.format(1 if (s & FR_SSR_SUA) else 0))
+      r.append('Channel A vSS!SyntaxError: {}'.format(1 if (s & FR_SSR_SEA) else 0))
+      r.append('Channel A vSS!ContentError : {}'.format(1 if (s & FR_SSR_CEA) else 0))
+      r.append('Channel A vSS!BViolation : {}'.format(1 if (s & FR_SSR_BVA) else 0))
+      r.append('Channel A vSS!TxConflict : {}'.format(1 if (s & FR_SSR_TCA) else 0))
 
     def on_peer_shutdown(self):
         self.stop()
@@ -1220,7 +1242,7 @@ class FlexRayGUI(QWidget):
         self.rx_bytes += payload_len
         self.rx_bytes_within_this_second += payload_len
 
-    def on_status_data(self, text):
+    def on_status_data(self, text, ssr0, ssr1, ssr2, ssr3, ssr4, ssr5, ssr6, ssr7):
         self.detail_status.setText(text)
 
     def clear_rx_frame_table(self):
