@@ -1077,7 +1077,7 @@ class FlexRayGUI(QWidget):
         stats_gb = QGroupBox('Status')
         stats_gb.setLayout(layout)
 
-        self.monitored_slots = [8, 24, 31, 45]
+        self.monitored_slots = [0, 1, 2, 3]
         layout = QHBoxLayout()
         for i in range(4):
           w = QSpinBox()
@@ -1116,6 +1116,9 @@ class FlexRayGUI(QWidget):
         self.setGeometry(200, 200, 800, 450)
         self.setWindowTitle('FlexRay Tool')
         self.show()
+
+    def set_monitored_slots(self, i, val):
+      self.monitored_slots[i] = val
 
     def send_monitored_slots(self):
       self.add_log('Set monitored slots: {}, {}, {}, {}'.format(*self.monitored_slots))
