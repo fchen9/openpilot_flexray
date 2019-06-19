@@ -405,26 +405,9 @@ class ReceivePacketsThread(QThread):
         self._status_data_signal.emit('\n'.join(r), casercr, cbsercr, ssr0, ssr1, ssr2, ssr3, ssr4, ssr5, ssr6, ssr7)
 
     @staticmethod
-    def parse_slot_status(s_even ,s_odd, id, r):
-      x = 'Slot {}, Even cycle, Chan B, '.format(id)
-      x += 'VF: {}, '.format(1 if (s_even & FR_SSR_VFB) else 0)
-      x += 'SyF: {}, '.format(1 if (s_even & FR_SSR_SYB) else 0)
-      x += 'NF: {}, '.format(1 if (s_even & FR_SSR_NFB) else 0)
-      x += 'Su: {}, '.format(1 if (s_even & FR_SSR_SUB) else 0)
-      x += 'SE: {}, '.format(1 if (s_even & FR_SSR_SEB) else 0)
-      x += 'CE : {}, '.format(1 if (s_even & FR_SSR_CEB) else 0)
-      x += 'BV : {}, '.format(1 if (s_even & FR_SSR_BVB) else 0)
-      x += 'TC : {}, '.format(1 if (s_even & FR_SSR_TCB) else 0)
-      x += 'Odd cycle, Chan A, '
-      x += 'VF: {}, '.format(1 if (s_odd & FR_SSR_VFA) else 0)
-      x += 'SyF: {}, '.format(1 if (s_odd & FR_SSR_SYA) else 0)
-      x += 'NF: {}, '.format(1 if (s_odd & FR_SSR_NFA) else 0)
-      x += 'Su: {}, '.format(1 if (s_odd & FR_SSR_SUA) else 0)
-      x += 'SE: {}, '.format(1 if (s_odd & FR_SSR_SEA) else 0)
-      x += 'CE : {}, '.format(1 if (s_odd & FR_SSR_CEA) else 0)
-      x += 'BV : {}, '.format(1 if (s_odd & FR_SSR_BVA) else 0)
-      x += 'TC : {}, '.format(1 if (s_odd & FR_SSR_TCA) else 0)
-      r.append(x)
+    def parse_slot_status(s_even, s_odd, slot, r):
+      r.append('{} Even  {}'.format(str(slot).rjust(4, ' '),  '  '.join(bin(s_even)[2:].rjust(16, '0'))))
+      r.append('{} Odd   {}'.format(str(slot).rjust(4, ' '),  '  '.join(bin(s_odd)[2:].rjust(16, '0'))))
 
     def on_peer_shutdown(self):
         self.stop()
@@ -1131,7 +1114,7 @@ class FlexRayGUI(QWidget):
     def add_file_log(self, text):
       t = datetime.now().strftime('%H:%M:%S.%f')[:-3]
       with open(os.path.expanduser("~/.flexray_adapter/flexray_tool.log"), 'a', encoding='utf-8') as f:
-        f.write(t + text + '\n')
+        f.write(t + ' ' + text + '\n')
 
     def connect_or_disconnect(self):
         if not self.recv_packets_thread:
@@ -1274,6 +1257,7 @@ class FlexRayGUI(QWidget):
     def on_status_data(self, text, casercr, cbsercr, ssr0, ssr1, ssr2, ssr3, ssr4, ssr5, ssr6, ssr7):
       self.detail_status.setText(text)
       r = []
+      r.append('Slot Cycle VF Sy NF Su SE CE BV TC VF Sy NF Su SE CE BV TC')
       ReceivePacketsThread.parse_slot_status(ssr0, ssr1, self.monitored_slots[0], r)
       ReceivePacketsThread.parse_slot_status(ssr2, ssr3, self.monitored_slots[1], r)
       ReceivePacketsThread.parse_slot_status(ssr4, ssr5, self.monitored_slots[2], r)
