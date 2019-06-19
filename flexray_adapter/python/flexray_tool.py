@@ -205,7 +205,7 @@ class ReceivePacketsThread(QThread):
     _flexray_fatal_error_signal = pyqtSignal('int')
     _exit_signal = pyqtSignal()
     _exception_signal = pyqtSignal('QString')
-    _status_data_signal = pyqtSignal('QString')
+    _status_data_signal = pyqtSignal('QString', 'int', 'int', 'int', 'int', 'int', 'int', 'int', 'int')
 
     def __init__(self, conn, on_frame_received, on_exit, on_exception, on_joined_cluster, on_disonnected_from_cluster,
                  on_join_cluster_failed, on_fatal_error, on_status_data):
