@@ -1077,6 +1077,21 @@ class FlexRayGUI(QWidget):
         stats_gb = QGroupBox('Status')
         stats_gb.setLayout(layout)
 
+        self.monitored_slots = [8, 24, 31, 45]
+        layout = QHBoxLayout()
+        for i in range(4):
+          w = QSpinBox()
+          w.setMinimum(0)
+          w.setMaximum(127)
+          w.setValue(self.monitored_slots[i])
+          w.valueChanged.connect(lambda val, i=i: self.set_monitored_slots(i, val))
+          layout.addWidget(w)
+        btn = QPushButton("&Upate")
+        btn.clicked.connect(self.send_monitored_slots)
+        layout.addWidget(btn)
+        monitored_slots_form = QGroupBox('Monitored Slots')
+        monitored_slots_form.setLayout(layout)
+
         self.log_lv = QListWidget()
         bottom_vbox_layout = QVBoxLayout()
         bottom_vbox_layout.addWidget(self.log_lv)
@@ -1088,6 +1103,7 @@ class FlexRayGUI(QWidget):
         layout.addWidget(tool_bar)
         layout.addWidget(self.rx_frames_gb)
         layout.addWidget(stats_gb)
+        layout.addWidget(monitored_slots_form)
         w = QWidget()
         w.setLayout(layout)
         splitter = QSplitter(Qt.Vertical, self)
@@ -1100,6 +1116,11 @@ class FlexRayGUI(QWidget):
         self.setGeometry(200, 200, 800, 450)
         self.setWindowTitle('FlexRay Tool')
         self.show()
+
+    def send_monitored_slots(self):
+      self.add_log('Set monitored slots: {}, {}, {}, {}'.format(*self.monitored_slots))
+      if self.conn:
+        self.conn.set_monitored_slots(self.monitored_slots)
 
     def add_log(self, t):
         self.log_lv.addItem(t)
@@ -1138,6 +1159,7 @@ class FlexRayGUI(QWidget):
         self.status_label_left.setText('   Connected   ')
         self.status_label_left.setStyleSheet(self.connected_text_style)
         self.status_label_right.setText('   Joining cluster...   ')
+        self.send_monitored_slots()
 
     def on_connect_failed(self, e):
         self.add_log(e)
