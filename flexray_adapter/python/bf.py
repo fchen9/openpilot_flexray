@@ -18,7 +18,8 @@ from flexray_tool import (mkdirs_exists_ok, ReceivePacketsThread, ConnectOrConfi
 from tcp_interface import Connection, ADAPTER_IP_ADDR, ADAPTER_TCP_PORT
 from constants import *
 
-PROGRESS_FILE = os.path.expanduser("~/.flexray_adapter/bf_progress4.yaml")
+PROGRESS_FILE = os.path.expanduser("~/.flexray_adapter/bf_progress5.yaml")
+PROGRESS3_FILE = os.path.expanduser("~/.flexray_adapter/bf_progress6.yaml")
 
 
 def load_progress():
@@ -31,6 +32,20 @@ def load_progress():
         gdNIT = y['gdNIT']
   return gdNIT
 
+def load_progress_3():
+  gdStaticSlot = 40
+  mkdirs_exists_ok(os.path.dirname(PROGRESS3_FILE))
+  if os.path.exists(PROGRESS3_FILE):
+    with open(PROGRESS3_FILE, 'r') as f:
+      y = yaml.load(f)
+      if 'gdStaticSlot' in y:
+        gdStaticSlot = y['gdStaticSlot']
+  return gdStaticSlot
+
+def save_progress3(gdStaticSlot):
+  mkdirs_exists_ok(os.path.dirname(PROGRESS3_FILE))
+  with open(PROGRESS3_FILE, 'w') as outfile:
+    yaml.dump({'gdStaticSlot': gdStaticSlot}, outfile)
 
 def save_progress(gdNIT):
   mkdirs_exists_ok(os.path.dirname(PROGRESS_FILE))
@@ -202,6 +217,77 @@ class BFAlgo1:
     return r
 
 
+# Bruteforce gdStaticSlot
+class BFAlgo3:
+  def __init__(self, config):
+    # Initial config
+    self.config = config
+    # Current config used for joining into car flexray network
+    self.cur_config = copy.deepcopy(config)
+    if (self.config['gdActionPointOffset'] <= self.config['gdMiniSlotActionPointOffset'] or self.config['gNumberOfMinislots'] == 0):
+        adActionPointDifference = 0
+    else:
+        adActionPointDifference = self.config['gdActionPointOffset'] - self.config['gdMiniSlotActionPointOffset']
+    # Constraint 18 equation
+    self.gMacroPerCycle = self.config['gdStaticSlot'] * self.config['gNumberOfStaticSlots'] + adActionPointDifference + \
+                     self.config['gdMinislot'] * self.config['gNumberOfMinislots'] + self.config['gdSymbolWindow'] + \
+                     self.config['gdNIT']
+    # gdStaticSlot is within [40, 70] from waveform
+    # gdActionPointOffset is 1
+    self.gdStaticSlot = load_progress_3()
+
+  # Calculate timing params according to constraint 18
+  def caclulate_params(self, log_func):
+    # Apparently gNumberOfMinislots of AUDI A4 is not zero.
+    if (self.config['gdActionPointOffset'] <= self.config['gdMiniSlotActionPointOffset'] or self.config[
+      'gNumberOfMinislots'] == 0):
+      adActionPointDifference = 0
+    else:
+      adActionPointDifference = self.config['gdActionPointOffset'] - self.config['gdMiniSlotActionPointOffset']
+    # Constraint 18
+    diff = self.gMacroPerCycle - self.gdStaticSlot * self.config['gNumberOfStaticSlots'] - \
+           adActionPointDifference - self.config['gdSymbolWindow'] - self.config['gdNIT']
+    # diff = gNumberOfMinislots * gdMinislot
+    # gNumberOfMinislots is in range [0, 7988]
+    # gdMiniSlot is in ange [2, 63]
+    for f in factors(diff):
+      if 2 <= f <= 63 and 0 < (diff / f) <= 7988:
+        return f, int(diff / f)
+    log_func('Can not find valid params for diff {}, gdNIT: {}'.format(diff, self.gdNIT))
+    return 0, 0
+
+  # Generate next valid config.
+  def next(self, log_func):
+    # Increase gdStaticSlot until find valid minislot config and symbol window
+    while self.gdStaticSlot < 70:
+      gdMinislot, gNumberOfMinislots = self.caclulate_params(log_func)
+      if gdMinislot != 0 and gNumberOfMinislots != 0:
+        break
+      self.gdStaticSlot += 1
+    if self.gdStaticSlot >= 70:
+      return None
+    self.cur_config['gdMinislot'] = gdMinislot
+    self.cur_config['gNumberOfMinislots'] = gNumberOfMinislots
+    self.cur_config['gdStaticSlot'] = self.gdStaticSlot
+    # Assume a fixed adOffsetCorrection
+    adOffsetCorrection = self.cur_config['gdNIT'] - 1
+    self.cur_config['gOffsetCorrectionStart'] = self.gMacroPerCycle - adOffsetCorrection
+    ok, err = verify_config(self.cur_config)
+    if not ok:
+      if type(err) == str:
+        log_func('gdNIT: {}, invalid config: {}'.format(self.gdNIT, err))
+      elif type(err) == tuple:
+        log_func('gdNIT: {}, invalid config: {} should be {}'.format(self.gdNIT, err[0], err[1]))
+      return None
+    self.gdStaticSlot += 1
+    return self.cur_config
+
+  def print_config(self):
+    r = 'gdStaticSlot: {}'.format(self.cur_config['gdStaticSlot'])
+    r += ', gNumberOfMinislots: {}'.format(self.cur_config['gNumberOfMinislots'])
+    r += ', gdMinislot: {}'.format(self.cur_config['gdMinislot'])
+    return r
+
 class BruteForceGUI(QWidget):
   def __init__(self, args):
     super().__init__()
@@ -291,7 +377,8 @@ class BruteForceGUI(QWidget):
 
     layout = QVBoxLayout()
     self.progress_label = QLabel()
-    self.progress_label.setText('gdNIT: {}, gdSymbolWindow: {}'.format(load_progress(), 580 - load_progress()))
+    #self.progress_label.setText('gdNIT: {}, gdSymbolWindow: {}'.format(load_progress(), 580 - load_progress()))
+    self.progress_label.setText('gdStaticSlot: {}'.format(load_progress_3()))
     layout.addWidget(self.progress_label)
     progress_gb = QGroupBox('Progress')
     progress_gb.setLayout(layout)
@@ -364,8 +451,7 @@ class BruteForceGUI(QWidget):
         return
       self.cur_config = connect_dlg.cur_config
       self.add_log('Config file loaded: {}'.format(connect_dlg.cur_config_file))
-      #self.bf_algo = BFAlgo1(self.cur_config)
-      self.bf_algo = BFAlgo2(self.cur_config)
+      self.bf_algo = BFAlgo3(self.cur_config)
       for t in connect_dlg.verify_result:
         self.add_log(t)
       self.start_connecting()
@@ -395,8 +481,8 @@ class BruteForceGUI(QWidget):
       self.connect_btn.setEnabled(True)
       self.cancel_btn.setEnabled(False)
       return
-    self.progress_label.setText(
-      'gdNIT: {}, gdSymbolWindow: {}'.format(self.bf_algo.cur_config['gdNIT'], self.bf_algo.cur_config['gdSymbolWindow']))
+    #self.progress_label.setText('gdNIT: {}, gdSymbolWindow: {}'.format(self.bf_algo.cur_config['gdNIT'], self.bf_algo.cur_config['gdSymbolWindow']))
+    self.progress_label.setText('gdStaticSlot: {}'.format(self.bf_algo.cur_config['gdStaticSlot']))
     self.add_log('Begin test: {}'.format(self.bf_algo.print_config()))
     self.status_label_left.setText('Connecting...')
     self.connect_btn.setEnabled(False)
@@ -453,7 +539,8 @@ class BruteForceGUI(QWidget):
     if self.existing:
       self.close()  # closeEVent will be called again
       return
-    save_progress(self.bf_algo.cur_config['gdNIT'])
+    #save_progress(self.bf_algo.cur_config['gdNIT'])
+    save_progress3(self.bf_algo.cur_config['gdStaticSlot'])
     # Retry joining cluster with another set of params
     self.start_connecting()
 
@@ -502,7 +589,7 @@ class BruteForceGUI(QWidget):
   def on_status_data(self, text, casercr, cbsercr, ssr0, ssr1, ssr2, ssr3, ssr4, ssr5, ssr6, ssr7, header_bytes):
     self.detail_status.setText(text)
     for t in text.split('\n'):
-      self.add_log('gdNIT: {}, {}'.format(self.bf_algo.cur_config['gdNIT'], t))
+      self.add_log('{}'.format(t))
     r = []
     r.append('Slot Cycle VF Sy NF Su SE CE BV TC VF Sy NF Su SE CE BV TC')
     ReceivePacketsThread.parse_slot_status(ssr0, ssr1, self.monitored_slots[0], r)
@@ -512,10 +599,11 @@ class BruteForceGUI(QWidget):
     self.add_file_log('Channel A ErrorCounter: {}, Channel B ErrorCounter: {}'.format(casercr, cbsercr))
     for t in r:
       self.add_file_log(t)
-    s = ''
-    for i in range(0, 5 * 64, 5):
-      s += 'slot {}: {}'.format(i // 5, ', '.join([hex(x) for x in header_bytes[i:(i + 5)]]))
-    self.add_file_log(s)
+    if False:
+      s = ''
+      for i in range(0, 5 * 64, 5):
+        s += 'slot {}: {}'.format(i // 5, ', '.join([hex(x) for x in header_bytes[i:(i + 5)]]))
+      self.add_file_log(s)
 
   def update_statistics_label(self):
     if self.tx_bps > 1000:
@@ -540,7 +628,7 @@ class BruteForceGUI(QWidget):
     self.update_statistics_label()
 
   def on_join_cluster_timeout(self):
-    self.add_log('gdNIT: {}, Join cluster timeout.'.format(self.bf_algo.cur_config['gdNIT']))
+    self.add_log('Join cluster timeout.')
     self.disconnect()
 
 def get_arg_parser():

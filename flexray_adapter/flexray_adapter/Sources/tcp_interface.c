@@ -125,6 +125,7 @@ static void process_packet(const packet_header *pkt_header) {
 					&s_status_data_packet.reg_vals[6],
 					&s_status_data_packet.reg_vals[7]);
 			flexray_driver_get_slots_status(&s_status_data_packet.reg_vals[8], &s_status_data_packet.reg_vals[9], &s_status_data_packet.reg_vals[10]);
+#if 0
 			for(i = 0; i < sizeof(s_status_data_packet.header_content); i++)
 				s_status_data_packet.header_content[i] = 0;
 			for(i = 0; i < (uint32_t)g_fr_config.individual_rx_msg_buf_count; i++) {
@@ -132,6 +133,7 @@ static void process_packet(const packet_header *pkt_header) {
 					break;
 				flexray_driver_read_rx_frame_header_without_check(i, &s_status_data_packet.header_content[i * 5]);
 			}
+#endif
 			flexray_driver_get_sync_frame_table(&s_status_data_packet.sync_frame_table[0], &a_even_cnt, &b_even_cnt, &a_odd_cnt, &b_odd_cnt, &s_status_data_packet.reg_vals[5]);
 			memcpy(&s_status_data_packet.min_max_corrections[0], &g_flexray_data.max_rate_correction, sizeof(s_status_data_packet.min_max_corrections));
 			tcp_interface_send_packet(PACKET_TYPE_HEALTH,

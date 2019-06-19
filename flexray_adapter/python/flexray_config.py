@@ -239,6 +239,23 @@ def verify_config(config):
         adActionPointDifference = 0
     else:
         adActionPointDifference = config['gdActionPointOffset'] - config['gdMiniSlotActionPointOffset']
+
+    # ignore this for bruteforce
+    if False:
+      aFrameLengthStatic = config['gdTSSTransmitter'] + cdFSS + 80 + config['gPayloadLengthStatic'] * 20 + cdFES
+      gdMaxPropagationDelayMin = config['gdMinPropagationDelay']
+      gdMaxPropagationDelayMax = 2.5
+      gdStaticSlot_min = 2 * config['gdActionPointOffset'] + ceil(((aFrameLengthStatic +
+        cChannelIdleDelimiter) * gdBitMax + config['gdMinPropagationDelay'] +
+       gdMaxPropagationDelayMin) / (config['gdMacrotick'] * (1 - cClockDeviationMax)))
+      gdStaticSlot_max = 2 * config['gdActionPointOffset'] + ceil(((aFrameLengthStatic +
+        cChannelIdleDelimiter) * gdBitMax + config['gdMinPropagationDelay'] +
+       gdMaxPropagationDelayMax) / (config['gdMacrotick'] * (1 - cClockDeviationMax)))
+      if config['gdStaticSlot'] > gdStaticSlot_max:
+          return False, 'gdStaticSlot should not be greater than {}, but we got {}'.format(gdStaticSlot_max, config['gdStaticSlot'])
+      if config['gdStaticSlot'] < gdStaticSlot_min:
+          return False, 'gdStaticSlot should not be less than {}, but we got {}'.format(gdStaticSlot_min, config['gdStaticSlot'])
+
     # Constraint 18:
     gMacroPerCycle = config['gdStaticSlot'] * config['gNumberOfStaticSlots'] + adActionPointDifference + config['gdMinislot'] * config['gNumberOfMinislots'] + config['gdSymbolWindow'] + config['gdNIT']
     result.append('gMacroPerCycle {} MT'.format(gMacroPerCycle))

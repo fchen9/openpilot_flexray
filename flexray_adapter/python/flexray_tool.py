@@ -1263,10 +1263,11 @@ class FlexRayGUI(QWidget):
       ReceivePacketsThread.parse_slot_status(ssr4, ssr5, self.monitored_slots[2], r)
       ReceivePacketsThread.parse_slot_status(ssr6, ssr7, self.monitored_slots[3], r)
       self.add_file_log('Channel A ErrorCounter: {}, Channel B ErrorCounter: {}'.format(casercr, cbsercr))
-      s = ''
-      for i in range(0, 5 * 64, 5):
-        s += 'slot {}: {}'.format(i //5, ', '.join([hex(x) for x in header_bytes[i:(i+5)]]))
-      self.add_file_log(s)
+      if False:
+        s = ''
+        for i in range(0, 5 * 64, 5):
+          s += ', slot {}: {}'.format(i //5, ', '.join([hex(x) for x in header_bytes[i:(i+5)]]))
+        self.add_file_log(s)
       for t in r:
         self.add_file_log(t)
 
