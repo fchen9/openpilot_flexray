@@ -71,7 +71,7 @@ static void process_packet(const packet_header *pkt_header) {
 	uint16_t payload_length = 0U;
 	uint8_t ret = FAILED;
 	uint8_t a_even_cnt = 0, b_even_cnt = 0, a_odd_cnt = 0, b_odd_cnt = 0;
-    uint8_t i = 0U;
+    uint32_t i = 0U;
 	packet_header send_pkt_header;
 	switch(EXTRACT_PACKET_FLAG_TYPE(pkt_header->flags)) {
 		case PACKET_TYPE_START_DRIVER:
@@ -127,7 +127,7 @@ static void process_packet(const packet_header *pkt_header) {
 			flexray_driver_get_slots_status(&s_status_data_packet.reg_vals[8], &s_status_data_packet.reg_vals[9], &s_status_data_packet.reg_vals[10]);
 			for(i = 0; i < sizeof(s_status_data_packet.header_content); i++)
 				s_status_data_packet.header_content[i] = 0;
-			for(i = 0; i < (uint8_t)g_fr_config.individual_rx_msg_buf_count; i++) {
+			for(i = 0; i < (uint32_t)g_fr_config.individual_rx_msg_buf_count; i++) {
 				if(i >= 64)
 					break;
 				flexray_driver_read_rx_frame_header_without_check(i, &s_status_data_packet.header_content[i * 5]);
