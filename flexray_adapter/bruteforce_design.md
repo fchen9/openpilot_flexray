@@ -59,6 +59,8 @@ See bf.py GUI for other params' value range.
   - pdMicrotick = 0.025 µs
 
 2. Capture a waveform with high sample rate( > 50MS/s)
+- gdActionPointOffset
+![](https://i.ibb.co/SQbLHmF/image.png)
 - gdTSSTransmitter can be decoded by picoscope. So gdTSSTransmitter = 920ns / gdBit = 9 below.
 ![](https://i.ibb.co/frmYdRM/image.png)
 - gNumberOfStaticSlots, gPayloadLengthStatic
