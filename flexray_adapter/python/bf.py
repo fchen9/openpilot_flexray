@@ -334,16 +334,14 @@ class BruteForceGUI(QWidget):
 
   def add_log(self, text):
     t = datetime.now().strftime('%H:%M:%S.%f')[:-3]
-    with open(os.path.expanduser("~/.flexray_adapter/bf.log"), 'a', encoding='utf-8') as f:
-      f.write(t + text + '\n')
-    self.log_lv.addItem(t + text)
+    self.log_lv.addItem(t + ' ' + text)
     self.log_lv.scrollToBottom()
     self.add_file_log(text)
 
   def add_file_log(self, text):
     t = datetime.now().strftime('%H:%M:%S.%f')[:-3]
     with open(os.path.expanduser("~/.flexray_adapter/bf.log"), 'a', encoding='utf-8') as f:
-      f.write(t + text + '\n')
+      f.write(t + ' ' + text + '\n')
 
   def on_connect_timer(self):
     if self.conn.is_connected():

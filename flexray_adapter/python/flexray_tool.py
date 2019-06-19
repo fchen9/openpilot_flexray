@@ -387,11 +387,8 @@ class ReceivePacketsThread(QThread):
         err = self._conn.parse_error_packet()
         self._flexray_fatal_error_signal.emit(err)
       elif pkt_type == PACKET_TYPE_HEALTH:
-        t = self._conn.parse_health_packet(payload)
-        if not t:
-          return
         psr0, psr1, psr2, psr3, pifr0, rtcor, offcor, \
-        ssr0, ssr1, ssr2, ssr3, ssr4, ssr5, ssr6, ssr7, \
+        casercr, cbsercr, ssr0, ssr1, ssr2, ssr3, ssr4, ssr5, ssr6, ssr7, \
         max_rc, max_oc, min_rc, min_oc, a_even_cnt, b_even_cnt, a_odd_cnt, b_odd_cnt, \
         sft = self._conn.parse_health_packet(payload)
         r = []
@@ -399,8 +396,7 @@ class ReceivePacketsThread(QThread):
         self.parse_psr2(psr2, r)
         self.parse_psr3(psr3, r)
         self.parse_pifr0(pifr0, r)
-        r.append('Rate correction out: {}'.format(rtcor))
-        r.append('Offset correction out: {}'.format(offcor))
+        r.append('Rate Corr out: {}, Offset Corr out: {}, Casercr: {}, Cbsercr: {}'.format(rtcor, offcor, casercr, cbsercr))
         if max_rc != 0 or min_rc != 0:
           r.append('Rate correction Max: {}, Min: {}'.format(max_rc, min_rc))
         if max_oc != 0 or min_oc != 0:

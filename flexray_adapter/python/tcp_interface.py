@@ -123,7 +123,7 @@ class Connection:
       raise RuntimeError("Invalid payload len for health packet: {}".format(len(payload)))
     reg_vals = 6  # unsigned reg val
     signed_reg_vals = 2
-    slots_status = 8
+    slots_status = 2 + 8
     corrections = 4
     if len(payload) // SIZEOF_UINT16 < (reg_vals + corrections):
       raise RuntimeError("Invalid payload len for health packet: {}".format(len(payload)))
@@ -135,13 +135,13 @@ class Connection:
     a_odd_cnt = t[5] & 0x000F
     b_odd_cnt = (t[5] & 0x00F0) >> 4
     # PSR0, PSR1, PSR2, PSR3, PIFR0, RateCorrect, OffCorrect
-    # ssr0, ssr1, ssr2, ssr3, ssr4, ssr5, ssr6, ssr7
+    # casercr, cbsercr, ssr0, ssr1, ssr2, ssr3, ssr4, ssr5, ssr6, ssr7
     # max_rate_correction, max_offset_correction, min_rate_correction, min_offset_correction,
     # a_even_cnt, b_even_cnt, a_even_cnt, a_even_cnt, sync frame table
     return t[0], t[1], t[2], t[3], t[4], t[6], t[7], \
-           t[8], t[9], t[10], t[11], t[12], t[13], t[14], t[15], \
-           t[16], t[17], t[18], t[19], \
-           a_even_cnt, b_even_cnt, a_odd_cnt, b_odd_cnt, t[12:]
+           t[8], t[9], t[10], t[11], t[12], t[13], t[14], t[15], t[16], t[17], \
+           t[18], t[19], t[20], t[21], \
+           a_even_cnt, b_even_cnt, a_odd_cnt, b_odd_cnt, t[22:]
 
   @staticmethod
   def parse_error_packet(payload):
