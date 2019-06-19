@@ -406,7 +406,7 @@ class ReceivePacketsThread(QThread):
         if max_oc != 0 or min_oc != 0:
           r.append('Offset correction Max: {}, Min: {}'.format(max_oc, min_oc))
         self.parse_sync_frame_table(a_even_cnt, b_even_cnt, a_odd_cnt, b_odd_cnt, sft, r)
-        self._status_data_signal.emit('\n'.join(r, ssr0, ssr1, ssr2, ssr3, ssr4, ssr5, ssr6, ssr7))
+        self._status_data_signal.emit('\n'.join(r), ssr0, ssr1, ssr2, ssr3, ssr4, ssr5, ssr6, ssr7)
 
     @staticmethod
     def parse_slot_status(s, r):
