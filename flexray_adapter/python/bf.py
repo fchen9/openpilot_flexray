@@ -398,8 +398,8 @@ class BFAlgo4:
     return self.cur_config
 
   def print_config(self):
-    r = 'gdActionPointOffset: {}'.format(self.cur_config['gdActionPointOffset'])
-    r += ', gdTssTransmitter: {}'.format(self.cur_config['gdTssTransmitter'])
+    r = 'gdTssTransmitter: {}'.format(self.cur_config['gdTssTransmitter'])
+    r += ', gdActionPointOffset: {}'.format(self.cur_config['gdActionPointOffset'])
     r += ', gNumberOfMinislots: {}'.format(self.cur_config['gNumberOfMinislots'])
     r += ', gdMinislot: {}'.format(self.cur_config['gdMinislot'])
     return r
@@ -658,7 +658,9 @@ class BruteForceGUI(QWidget):
       self.close()  # closeEVent will be called again
       return
     #save_progress(self.bf_algo.cur_config['gdNIT'])
-    save_progress3(self.bf_algo.cur_config['gdStaticSlot'])
+    #save_progress3(self.bf_algo.cur_config['gdStaticSlot'])
+    save_progress_gdActionPointOffset(self.bf_algo.gdActionPointOffset)
+    save_progress_gdTssTransmitter(self.bf_algo.gdTssTransmitter)
     # Retry joining cluster with another set of params
     self.start_connecting()
 
