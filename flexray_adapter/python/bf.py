@@ -52,24 +52,24 @@ def save_progress(gdNIT):
   with open(PROGRESS_FILE, 'w') as outfile:
     yaml.dump({'gdNIT': gdNIT}, outfile)
 
-PROGRESS_GDTSSTRANSMITTER_FILE = os.path.expanduser("~/.flexray_adapter/bf_progress_gdTssTransmitter.yaml")
+PROGRESS_GDTSSTRANSMITTER_FILE = os.path.expanduser("~/.flexray_adapter/bf_progress_gdTSSTransmitter2.yaml")
 
-def load_progress_gdTssTransmitter():
-  gdTssTransmitter = 1
+def load_progress_gdTSSTransmitter():
+  gdTSSTransmitter = 1
   mkdirs_exists_ok(os.path.dirname(PROGRESS_GDTSSTRANSMITTER_FILE))
   if os.path.exists(PROGRESS_GDTSSTRANSMITTER_FILE):
     with open(PROGRESS3_FILE, 'r') as f:
       y = yaml.load(f)
-      if 'gdTssTransmitter' in y:
-        gdTssTransmitter = y['gdTssTransmitter']
-  return gdTssTransmitter
+      if 'gdTSSTransmitter' in y:
+        gdTSSTransmitter = y['gdTSSTransmitter']
+  return gdTSSTransmitter
 
-def save_progress_gdTssTransmitter(gdTssTransmitter):
+def save_progress_gdTSSTransmitter(gdTSSTransmitter):
   mkdirs_exists_ok(os.path.dirname(PROGRESS_GDTSSTRANSMITTER_FILE))
   with open(PROGRESS3_FILE, 'w') as outfile:
-    yaml.dump({'gdTssTransmitter': gdTssTransmitter}, outfile)
+    yaml.dump({'gdTSSTransmitter': gdTSSTransmitter}, outfile)
 
-PROGRESS_GDACTIONPOINTOFFSET_FILE = os.path.expanduser("~/.flexray_adapter/bf_progress_gdActionPointOffset.yaml")
+PROGRESS_GDACTIONPOINTOFFSET_FILE = os.path.expanduser("~/.flexray_adapter/bf_progress_gdActionPointOffset2.yaml")
 
 def load_progress_gdActionPointOffset():
   gdActionPointOffset = 1
@@ -322,7 +322,7 @@ class BFAlgo3:
     return r
 
 # We got good value 53 for gdStaticSlot, also get vSS!BViolation error.
-# Lets try bf gdTssTransmitter([1, 15]) and gdActionPointOffset ([1, 10])
+# Lets try bf gdTSSTransmitter([1, 15]) and gdActionPointOffset ([1, 10])
 class BFAlgo4:
   def __init__(self, config):
     # Initial config
@@ -338,11 +338,11 @@ class BFAlgo4:
                      self.config['gdMinislot'] * self.config['gNumberOfMinislots'] + self.config['gdSymbolWindow'] + \
                      self.config['gdNIT']
     # [1, 15]
-    self.gdTssTransmitter = load_progress_gdTssTransmitter()
+    self.gdTSSTransmitter = load_progress_gdTSSTransmitter()
     # [1, 10]
     self.gdActionPointOffset = load_progress_gdActionPointOffset()
     self.values = []
-    for i in range(self.gdTssTransmitter, 15):
+    for i in range(self.gdTSSTransmitter, 15):
       for j in range(self.gdActionPointOffset, 10):
         self.values.append((i, j))
 
@@ -372,7 +372,7 @@ class BFAlgo4:
     if len(self.values) <= 0:
       return None
     while len(self.values) > 0:
-      self.gdTssTransmitter, self.gdActionPointOffset = self.values[0]
+      self.gdTSSTransmitter, self.gdActionPointOffset = self.values[0]
       self.values = self.values[1:]
       gdMinislot, gNumberOfMinislots = self.caclulate_params(log_func)
       if gdMinislot != 0 and gNumberOfMinislots != 0:
@@ -381,24 +381,28 @@ class BFAlgo4:
       return None
     self.cur_config['gdMinislot'] = gdMinislot
     self.cur_config['gNumberOfMinislots'] = gNumberOfMinislots
-    self.cur_config['gdTssTransmitter'] = self.gdTssTransmitter
+    self.cur_config['gdTSSTransmitter'] = self.gdTSSTransmitter
     self.cur_config['gdActionPointOffset'] = self.gdActionPointOffset
+
     # Assume a fixed adOffsetCorrection
     adOffsetCorrection = self.cur_config['gdNIT'] - 1
     self.cur_config['gOffsetCorrectionStart'] = self.gMacroPerCycle - adOffsetCorrection
-    ok, err = verify_config(self.cur_config)
-    if not ok:
+    while True:
+      ok, err = verify_config(self.cur_config)
+      if ok:
+        break
       if type(err) == str:
-        log_func('gdActionPointOffset: {}, gdTssTransmitter: {}, invalid config: {}'.format(
-          self.gdActionPointOffset, self.gdTssTransmitter, err))
+        log_func('gdActionPointOffset: {}, gdTSSTransmitter: {}, invalid config: {}'.format(
+          self.gdActionPointOffset, self.gdTSSTransmitter, err))
+        return None
       elif type(err) == tuple:
-        log_func('gdActionPointOffset: {}, gdTssTransmitter: {}, invalid config: {} should be {}'.format(
-          self.gdActionPointOffset, self.gdTssTransmitter, err[0], err[1]))
-      return None
+        log_func('gdActionPointOffset: {}, gdTSSTransmitter: {}, correct params: {} should be {}'.format(
+          self.gdActionPointOffset, self.gdTSSTransmitter, err[0], err[1]))
+        self.cur_config[err[0]] = err[1]
     return self.cur_config
 
   def print_config(self):
-    r = 'gdTssTransmitter: {}'.format(self.cur_config['gdTssTransmitter'])
+    r = 'gdTSSTransmitter: {}'.format(self.cur_config['gdTSSTransmitter'])
     r += ', gdActionPointOffset: {}'.format(self.cur_config['gdActionPointOffset'])
     r += ', gNumberOfMinislots: {}'.format(self.cur_config['gNumberOfMinislots'])
     r += ', gdMinislot: {}'.format(self.cur_config['gdMinislot'])
@@ -495,8 +499,8 @@ class BruteForceGUI(QWidget):
     self.progress_label = QLabel()
     #self.progress_label.setText('gdNIT: {}, gdSymbolWindow: {}'.format(load_progress(), 580 - load_progress()))
     #self.progress_label.setText('gdStaticSlot: {}'.format(load_progress_3()))
-    self.progress_label.setText('gdActionPointOffset: {}, gdTssTransmitter: {}'.format(
-      load_progress_gdActionPointOffset(), load_progress_gdTssTransmitter()))
+    self.progress_label.setText('gdActionPointOffset: {}, gdTSSTransmitter: {}'.format(
+      load_progress_gdActionPointOffset(), load_progress_gdTSSTransmitter()))
     layout.addWidget(self.progress_label)
     progress_gb = QGroupBox('Progress')
     progress_gb.setLayout(layout)
@@ -660,7 +664,7 @@ class BruteForceGUI(QWidget):
     #save_progress(self.bf_algo.cur_config['gdNIT'])
     #save_progress3(self.bf_algo.cur_config['gdStaticSlot'])
     save_progress_gdActionPointOffset(self.bf_algo.gdActionPointOffset)
-    save_progress_gdTssTransmitter(self.bf_algo.gdTssTransmitter)
+    save_progress_gdTSSTransmitter(self.bf_algo.gdTSSTransmitter)
     # Retry joining cluster with another set of params
     self.start_connecting()
 
