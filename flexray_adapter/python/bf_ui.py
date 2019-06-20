@@ -775,6 +775,6 @@ def get_arg_parser():
                       help="IP address of flexray adapter.")
   parser.add_argument("--port", nargs="?", default=ADAPTER_TCP_PORT,
                       help="Listen port of flexray adapter.")
-  parser.add_argument("--timeout", nargs="?", type=float, default=5 * 1000.,
+  parser.add_argument("--timeout", nargs="?", type=float, default=3 * 1000.,
                       help="Wait timeout for joining cluster.")
   return parser

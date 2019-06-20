@@ -319,6 +319,8 @@ class BFAlgo3:
     r = 'gdStaticSlot: {}'.format(self.cur_config['gdStaticSlot'])
     r += ', gNumberOfMinislots: {}'.format(self.cur_config['gNumberOfMinislots'])
     r += ', gdMinislot: {}'.format(self.cur_config['gdMinislot'])
+    r += ', gdTSSTransmitter: {}'.format(self.cur_config['gdTSSTransmitter'])
+    r += ', gdActionPointOffset: {}'.format(self.cur_config['gdActionPointOffset'])
     return r
 
   def save_progress(self):
@@ -328,102 +330,6 @@ class BFAlgo3:
   def get_cur_progress():
     return 'gdStaticSlot: {}, '.format(
       load_progress_3())
-
-# We got good value 53 for gdStaticSlot, also get vSS!BViolation error.
-# Lets try bf gdTSSTransmitter([1, 15]) and gdActionPointOffset ([1, 10])
-class BFAlgo4:
-  def __init__(self, config):
-    # Initial config
-    self.config = config
-    # Current config that will be used for joining into car flexray network
-    self.cur_config = copy.deepcopy(config)
-    if (self.config['gdActionPointOffset'] <= self.config['gdMiniSlotActionPointOffset'] or self.config['gNumberOfMinislots'] == 0):
-        adActionPointDifference = 0
-    else:
-        adActionPointDifference = self.config['gdActionPointOffset'] - self.config['gdMiniSlotActionPointOffset']
-    # Constraint 18 equation
-    self.gMacroPerCycle = self.config['gdStaticSlot'] * self.config['gNumberOfStaticSlots'] + adActionPointDifference + \
-                     self.config['gdMinislot'] * self.config['gNumberOfMinislots'] + self.config['gdSymbolWindow'] + \
-                     self.config['gdNIT']
-    # [1, 15]
-    self.gdTSSTransmitter = load_progress_gdTSSTransmitter()
-    # [1, 10]
-    self.gdActionPointOffset = load_progress_gdActionPointOffset()
-    self.values = []
-    for i in range(self.gdTSSTransmitter, 15):
-      for j in range(self.gdActionPointOffset, 10):
-        self.values.append((i, j))
-
-
-  # Calculate timing params according to constraint 18
-  def caclulate_params(self, log_func):
-    # Apparently gNumberOfMinislots of AUDI A4 is not zero.
-    if (self.gdActionPointOffset <= self.config['gdMiniSlotActionPointOffset'] or self.config[
-      'gNumberOfMinislots'] == 0):
-      adActionPointDifference = 0
-    else:
-      adActionPointDifference = self.gdActionPointOffset - self.config['gdMiniSlotActionPointOffset']
-    # Constraint 18
-    diff = self.gMacroPerCycle - self.config['gdStaticSlot'] * self.config['gNumberOfStaticSlots'] - \
-           adActionPointDifference - self.config['gdSymbolWindow'] - self.config['gdNIT']
-    # diff = gNumberOfMinislots * gdMinislot
-    # gNumberOfMinislots is in range [0, 7988]
-    # gdMiniSlot is in ange [2, 63]
-    for f in factors(diff):
-      if 2 <= f <= 63 and 0 < (diff // f) <= 7988:
-        return f, diff // f
-    log_func('Can not find valid params for diff {}, {}'.format(diff, self.print_config()))
-    return 0, 0
-
-  # Generate next valid config.
-  def next(self, log_func):
-    if len(self.values) <= 0:
-      return None
-    while len(self.values) > 0:
-      self.gdTSSTransmitter, self.gdActionPointOffset = self.values[0]
-      self.values = self.values[1:]
-      gdMinislot, gNumberOfMinislots = self.caclulate_params(log_func)
-      if gdMinislot != 0 and gNumberOfMinislots != 0:
-        break
-    if gdMinislot == 0 or gNumberOfMinislots == 0:
-      return None
-    self.cur_config['gdMinislot'] = gdMinislot
-    self.cur_config['gNumberOfMinislots'] = gNumberOfMinislots
-    self.cur_config['gdTSSTransmitter'] = self.gdTSSTransmitter
-    self.cur_config['gdActionPointOffset'] = self.gdActionPointOffset
-
-    # Assume a fixed adOffsetCorrection
-    adOffsetCorrection = self.cur_config['gdNIT'] - 1
-    self.cur_config['gOffsetCorrectionStart'] = self.gMacroPerCycle - adOffsetCorrection
-    while True:
-      ok, err = verify_config(self.cur_config)
-      if ok:
-        break
-      if type(err) == str:
-        log_func('gdActionPointOffset: {}, gdTSSTransmitter: {}, invalid config: {}'.format(
-          self.gdActionPointOffset, self.gdTSSTransmitter, err))
-        return None
-      elif type(err) == tuple:
-        log_func('gdActionPointOffset: {}, gdTSSTransmitter: {}, correct params: {} should be {}'.format(
-          self.gdActionPointOffset, self.gdTSSTransmitter, err[0], err[1]))
-        self.cur_config[err[0]] = err[1]
-    return self.cur_config
-
-  def print_config(self):
-    r = 'gdTSSTransmitter: {}'.format(self.cur_config['gdTSSTransmitter'])
-    r += ', gdActionPointOffset: {}'.format(self.cur_config['gdActionPointOffset'])
-    r += ', gNumberOfMinislots: {}'.format(self.cur_config['gNumberOfMinislots'])
-    r += ', gdMinislot: {}'.format(self.cur_config['gdMinislot'])
-    return r
-
-  def save_progress(self):
-    save_progress_gdActionPointOffset(self.gdActionPointOffset)
-    save_progress_gdTSSTransmitter(self.gdTSSTransmitter)
-
-  @staticmethod
-  def get_cur_progress():
-    return 'gdTSSTransmitter: {}, gdActionPointOffset: {}'.format(
-      load_progress_gdTSSTransmitter(), load_progress_gdActionPointOffset())
 
 if __name__ == '__main__':
   app = QApplication(sys.argv)

@@ -248,86 +248,6 @@ class BFAlgo1:
     r += ', gdMinislot: {}'.format(self.cur_config['gdMinislot'])
     return r
 
-
-# Bruteforce gdStaticSlot
-class BFAlgo3:
-  def __init__(self, config):
-    # Initial config
-    self.config = config
-    # Current config used for joining into car flexray network
-    self.cur_config = copy.deepcopy(config)
-    if (self.config['gdActionPointOffset'] <= self.config['gdMiniSlotActionPointOffset'] or self.config['gNumberOfMinislots'] == 0):
-        adActionPointDifference = 0
-    else:
-        adActionPointDifference = self.config['gdActionPointOffset'] - self.config['gdMiniSlotActionPointOffset']
-    # Constraint 18 equation
-    self.gMacroPerCycle = self.config['gdStaticSlot'] * self.config['gNumberOfStaticSlots'] + adActionPointDifference + \
-                     self.config['gdMinislot'] * self.config['gNumberOfMinislots'] + self.config['gdSymbolWindow'] + \
-                     self.config['gdNIT']
-    # gdStaticSlot is within [40, 70] from waveform
-    # gdActionPointOffset is 1
-    self.gdStaticSlot = load_progress_3()
-
-  # Calculate timing params according to constraint 18
-  def caclulate_params(self, log_func):
-    # Apparently gNumberOfMinislots of AUDI A4 is not zero.
-    if (self.config['gdActionPointOffset'] <= self.config['gdMiniSlotActionPointOffset'] or self.config[
-      'gNumberOfMinislots'] == 0):
-      adActionPointDifference = 0
-    else:
-      adActionPointDifference = self.config['gdActionPointOffset'] - self.config['gdMiniSlotActionPointOffset']
-    # Constraint 18
-    diff = self.gMacroPerCycle - self.gdStaticSlot * self.config['gNumberOfStaticSlots'] - \
-           adActionPointDifference - self.config['gdSymbolWindow'] - self.config['gdNIT']
-    # diff = gNumberOfMinislots * gdMinislot
-    # gNumberOfMinislots is in range [0, 7988]
-    # gdMiniSlot is in ange [2, 63]
-    for f in factors(diff):
-      if 2 <= f <= 63 and 0 < (diff / f) <= 7988:
-        return f, int(diff / f)
-    log_func('Can not find valid params for diff {}, gdNIT: {}'.format(diff, self.gdNIT))
-    return 0, 0
-
-  # Generate next valid config.
-  def next(self, log_func):
-    # Increase gdStaticSlot until find valid minislot config and symbol window
-    while self.gdStaticSlot < 70:
-      gdMinislot, gNumberOfMinislots = self.caclulate_params(log_func)
-      if gdMinislot != 0 and gNumberOfMinislots != 0:
-        break
-      self.gdStaticSlot += 1
-    if self.gdStaticSlot >= 70:
-      return None
-    self.cur_config['gdMinislot'] = gdMinislot
-    self.cur_config['gNumberOfMinislots'] = gNumberOfMinislots
-    self.cur_config['gdStaticSlot'] = self.gdStaticSlot
-    # Assume a fixed adOffsetCorrection
-    adOffsetCorrection = self.cur_config['gdNIT'] - 1
-    self.cur_config['gOffsetCorrectionStart'] = self.gMacroPerCycle - adOffsetCorrection
-    ok, err = verify_config(self.cur_config)
-    if not ok:
-      if type(err) == str:
-        log_func('gdNIT: {}, invalid config: {}'.format(self.gdNIT, err))
-      elif type(err) == tuple:
-        log_func('gdNIT: {}, invalid config: {} should be {}'.format(self.gdNIT, err[0], err[1]))
-      return None
-    self.gdStaticSlot += 1
-    return self.cur_config
-
-  def print_config(self):
-    r = 'gdStaticSlot: {}'.format(self.cur_config['gdStaticSlot'])
-    r += ', gNumberOfMinislots: {}'.format(self.cur_config['gNumberOfMinislots'])
-    r += ', gdMinislot: {}'.format(self.cur_config['gdMinislot'])
-    return r
-
-  def save_progress(self):
-    save_progress3(self.cur_config['gdStaticSlot'])
-
-  @staticmethod
-  def get_cur_progress():
-    return 'gdStaticSlot: {}, '.format(
-      load_progress_3())
-
 # We got good value 53 for gdStaticSlot, also get vSS!BViolation error.
 # Lets try bf gdTSSTransmitter([1, 15]) and gdActionPointOffset ([1, 10])
 class BFAlgo4:
@@ -413,6 +333,7 @@ class BFAlgo4:
     r += ', gdActionPointOffset: {}'.format(self.cur_config['gdActionPointOffset'])
     r += ', gNumberOfMinislots: {}'.format(self.cur_config['gNumberOfMinislots'])
     r += ', gdMinislot: {}'.format(self.cur_config['gdMinislot'])
+    r += ', gdMinislot: {}'.format(self.cur_config['gdStaticSlot'])
     return r
 
   def save_progress(self):
