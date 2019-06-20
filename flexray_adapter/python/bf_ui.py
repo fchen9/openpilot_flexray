@@ -21,7 +21,6 @@ from constants import *
 PROGRESS_FILE = os.path.expanduser("~/.flexray_adapter/bf_progress5.yaml")
 PROGRESS3_FILE = os.path.expanduser("~/.flexray_adapter/bf_progress6.yaml")
 
-
 def load_progress():
   gdNIT = 2
   mkdirs_exists_ok(os.path.dirname(PROGRESS_FILE))
@@ -66,7 +65,7 @@ def load_progress_gdTSSTransmitter():
 
 def save_progress_gdTSSTransmitter(gdTSSTransmitter):
   mkdirs_exists_ok(os.path.dirname(PROGRESS_GDTSSTRANSMITTER_FILE))
-  with open(PROGRESS3_FILE, 'w') as outfile:
+  with open(PROGRESS_GDTSSTRANSMITTER_FILE, 'w') as outfile:
     yaml.dump({'gdTSSTransmitter': gdTSSTransmitter}, outfile)
 
 PROGRESS_GDACTIONPOINTOFFSET_FILE = os.path.expanduser("~/.flexray_adapter/bf_progress_gdActionPointOffset2.yaml")
@@ -75,7 +74,7 @@ def load_progress_gdActionPointOffset():
   gdActionPointOffset = 1
   mkdirs_exists_ok(os.path.dirname(PROGRESS_GDACTIONPOINTOFFSET_FILE))
   if os.path.exists(PROGRESS_GDTSSTRANSMITTER_FILE):
-    with open(PROGRESS3_FILE, 'r') as f:
+    with open(PROGRESS_GDACTIONPOINTOFFSET_FILE, 'r') as f:
       y = yaml.load(f)
       if 'gdActionPointOffset' in y:
         gdActionPointOffset = y['gdActionPointOffset']
@@ -83,7 +82,7 @@ def load_progress_gdActionPointOffset():
 
 def save_progress_gdActionPointOffset(gdActionPointOffset):
   mkdirs_exists_ok(os.path.dirname(PROGRESS_GDACTIONPOINTOFFSET_FILE))
-  with open(PROGRESS3_FILE, 'w') as outfile:
+  with open(PROGRESS_GDACTIONPOINTOFFSET_FILE, 'w') as outfile:
     yaml.dump({'gdActionPointOffset': gdActionPointOffset}, outfile)
 
 def factors(n):
@@ -321,6 +320,14 @@ class BFAlgo3:
     r += ', gdMinislot: {}'.format(self.cur_config['gdMinislot'])
     return r
 
+  def save_progress(self):
+    save_progress3(self.cur_config['gdStaticSlot'])
+
+  @staticmethod
+  def get_cur_progress():
+    return 'gdStaticSlot: {}, '.format(
+      load_progress_3())
+
 # We got good value 53 for gdStaticSlot, also get vSS!BViolation error.
 # Lets try bf gdTSSTransmitter([1, 15]) and gdActionPointOffset ([1, 10])
 class BFAlgo4:
@@ -408,10 +415,21 @@ class BFAlgo4:
     r += ', gdMinislot: {}'.format(self.cur_config['gdMinislot'])
     return r
 
+  def save_progress(self):
+    save_progress_gdActionPointOffset(self.gdActionPointOffset)
+    save_progress_gdTSSTransmitter(self.gdTSSTransmitter)
+
+  @staticmethod
+  def get_cur_progress():
+    return 'gdTSSTransmitter: {}, gdActionPointOffset: {}'.format(
+      load_progress_gdTSSTransmitter(), load_progress_gdActionPointOffset())
+
 class BruteForceGUI(QWidget):
-  def __init__(self, args):
+  def __init__(self, args, bf_class, log_file):
     super().__init__()
     self.args = args
+    self.bf_class = bf_class
+    self.log_file = log_file
     self.conn = None
     self.elapsed = 0.
     self.timer = QTimer()
@@ -497,10 +515,7 @@ class BruteForceGUI(QWidget):
 
     layout = QVBoxLayout()
     self.progress_label = QLabel()
-    #self.progress_label.setText('gdNIT: {}, gdSymbolWindow: {}'.format(load_progress(), 580 - load_progress()))
-    #self.progress_label.setText('gdStaticSlot: {}'.format(load_progress_3()))
-    self.progress_label.setText('gdActionPointOffset: {}, gdTSSTransmitter: {}'.format(
-      load_progress_gdActionPointOffset(), load_progress_gdTSSTransmitter()))
+    self.progress_label.setText(self.bf_class.get_cur_progress())
     layout.addWidget(self.progress_label)
     progress_gb = QGroupBox('Progress')
     progress_gb.setLayout(layout)
@@ -549,7 +564,7 @@ class BruteForceGUI(QWidget):
 
   def add_file_log(self, text):
     t = datetime.now().strftime('%H:%M:%S.%f')[:-3]
-    with open(os.path.expanduser("~/.flexray_adapter/bf.log"), 'a', encoding='utf-8') as f:
+    with open(os.path.expanduser("~/.flexray_adapter/" + self.log_file), 'a', encoding='utf-8') as f:
       f.write(t + ' ' + text + '\n')
 
   def on_connect_timer(self):
@@ -573,7 +588,7 @@ class BruteForceGUI(QWidget):
         return
       self.cur_config = connect_dlg.cur_config
       self.add_log('Config file loaded: {}'.format(connect_dlg.cur_config_file))
-      self.bf_algo = BFAlgo4(self.cur_config)
+      self.bf_algo = self.bf_class(self.cur_config)
       for t in connect_dlg.verify_result:
         self.add_log(t)
       self.start_connecting()
@@ -603,13 +618,12 @@ class BruteForceGUI(QWidget):
       self.connect_btn.setEnabled(True)
       self.cancel_btn.setEnabled(False)
       return
-    #self.progress_label.setText('gdNIT: {}, gdSymbolWindow: {}'.format(self.bf_algo.cur_config['gdNIT'], self.bf_algo.cur_config['gdSymbolWindow']))
-    self.progress_label.setText('gdStaticSlot: {}'.format(self.bf_algo.cur_config['gdStaticSlot']))
+    self.progress_label.setText(self.bf_algo.print_config())
     self.add_log('Begin test: {}'.format(self.bf_algo.print_config()))
     self.status_label_left.setText('Connecting...')
     self.connect_btn.setEnabled(False)
     self.conn = Connection(config)
-    self.conn.connect(addr=args.addr, port=args.port)
+    self.conn.connect(addr=self.args.addr, port=self.args.port)
     self.elapsed = 0.
     self.connect_timer.start(100.)
 
@@ -661,10 +675,7 @@ class BruteForceGUI(QWidget):
     if self.existing:
       self.close()  # closeEVent will be called again
       return
-    #save_progress(self.bf_algo.cur_config['gdNIT'])
-    #save_progress3(self.bf_algo.cur_config['gdStaticSlot'])
-    save_progress_gdActionPointOffset(self.bf_algo.gdActionPointOffset)
-    save_progress_gdTSSTransmitter(self.bf_algo.gdTSSTransmitter)
+    self.bf_algo.save_progress()
     # Retry joining cluster with another set of params
     self.start_connecting()
 
@@ -767,10 +778,3 @@ def get_arg_parser():
   parser.add_argument("--timeout", nargs="?", type=float, default=5 * 1000.,
                       help="Wait timeout for joining cluster.")
   return parser
-
-
-if __name__ == '__main__':
-  app = QApplication(sys.argv)
-  args = get_arg_parser().parse_args(sys.argv[1:])
-  ex = BruteForceGUI(args)
-  sys.exit(app.exec())
