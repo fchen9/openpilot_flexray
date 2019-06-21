@@ -248,188 +248,13 @@ class BFAlgo1:
     r += ', gdMinislot: {}'.format(self.cur_config['gdMinislot'])
     return r
 
-
-# Bruteforce gdStaticSlot
-class BFAlgo3:
-  def __init__(self, config):
-    # Initial config
-    self.config = config
-    # Current config used for joining into car flexray network
-    self.cur_config = copy.deepcopy(config)
-    if (self.config['gdActionPointOffset'] <= self.config['gdMiniSlotActionPointOffset'] or self.config['gNumberOfMinislots'] == 0):
-        adActionPointDifference = 0
-    else:
-        adActionPointDifference = self.config['gdActionPointOffset'] - self.config['gdMiniSlotActionPointOffset']
-    # Constraint 18 equation
-    self.gMacroPerCycle = self.config['gdStaticSlot'] * self.config['gNumberOfStaticSlots'] + adActionPointDifference + \
-                     self.config['gdMinislot'] * self.config['gNumberOfMinislots'] + self.config['gdSymbolWindow'] + \
-                     self.config['gdNIT']
-    # gdStaticSlot is within [40, 70] from waveform
-    # gdActionPointOffset is 1
-    self.gdStaticSlot = load_progress_3()
-
-  # Calculate timing params according to constraint 18
-  def caclulate_params(self, log_func):
-    # Apparently gNumberOfMinislots of AUDI A4 is not zero.
-    if (self.config['gdActionPointOffset'] <= self.config['gdMiniSlotActionPointOffset'] or self.config[
-      'gNumberOfMinislots'] == 0):
-      adActionPointDifference = 0
-    else:
-      adActionPointDifference = self.config['gdActionPointOffset'] - self.config['gdMiniSlotActionPointOffset']
-    # Constraint 18
-    diff = self.gMacroPerCycle - self.gdStaticSlot * self.config['gNumberOfStaticSlots'] - \
-           adActionPointDifference - self.config['gdSymbolWindow'] - self.config['gdNIT']
-    # diff = gNumberOfMinislots * gdMinislot
-    # gNumberOfMinislots is in range [0, 7988]
-    # gdMiniSlot is in ange [2, 63]
-    for f in factors(diff):
-      if 2 <= f <= 63 and 0 < (diff / f) <= 7988:
-        return f, int(diff / f)
-    log_func('Can not find valid params for diff {}, gdNIT: {}'.format(diff, self.gdNIT))
-    return 0, 0
-
-  # Generate next valid config.
-  def next(self, log_func):
-    # Increase gdStaticSlot until find valid minislot config and symbol window
-    while self.gdStaticSlot < 70:
-      gdMinislot, gNumberOfMinislots = self.caclulate_params(log_func)
-      if gdMinislot != 0 and gNumberOfMinislots != 0:
-        break
-      self.gdStaticSlot += 1
-    if self.gdStaticSlot >= 70:
-      return None
-    self.cur_config['gdMinislot'] = gdMinislot
-    self.cur_config['gNumberOfMinislots'] = gNumberOfMinislots
-    self.cur_config['gdStaticSlot'] = self.gdStaticSlot
-    # Assume a fixed adOffsetCorrection
-    adOffsetCorrection = self.cur_config['gdNIT'] - 1
-    self.cur_config['gOffsetCorrectionStart'] = self.gMacroPerCycle - adOffsetCorrection
-    ok, err = verify_config(self.cur_config)
-    if not ok:
-      if type(err) == str:
-        log_func('gdNIT: {}, invalid config: {}'.format(self.gdNIT, err))
-      elif type(err) == tuple:
-        log_func('gdNIT: {}, invalid config: {} should be {}'.format(self.gdNIT, err[0], err[1]))
-      return None
-    self.gdStaticSlot += 1
-    return self.cur_config
-
-  def print_config(self):
-    r = 'gdStaticSlot: {}'.format(self.cur_config['gdStaticSlot'])
-    r += ', gNumberOfMinislots: {}'.format(self.cur_config['gNumberOfMinislots'])
-    r += ', gdMinislot: {}'.format(self.cur_config['gdMinislot'])
-    return r
-
-  def save_progress(self):
-    save_progress3(self.cur_config['gdStaticSlot'])
-
-  @staticmethod
-  def get_cur_progress():
-    return 'gdStaticSlot: {}, '.format(
-      load_progress_3())
-
-# We got good value 53 for gdStaticSlot, also get vSS!BViolation error.
-# Lets try bf gdTSSTransmitter([1, 15]) and gdActionPointOffset ([1, 10])
-class BFAlgo4:
-  def __init__(self, config):
-    # Initial config
-    self.config = config
-    # Current config that will be used for joining into car flexray network
-    self.cur_config = copy.deepcopy(config)
-    if (self.config['gdActionPointOffset'] <= self.config['gdMiniSlotActionPointOffset'] or self.config['gNumberOfMinislots'] == 0):
-        adActionPointDifference = 0
-    else:
-        adActionPointDifference = self.config['gdActionPointOffset'] - self.config['gdMiniSlotActionPointOffset']
-    # Constraint 18 equation
-    self.gMacroPerCycle = self.config['gdStaticSlot'] * self.config['gNumberOfStaticSlots'] + adActionPointDifference + \
-                     self.config['gdMinislot'] * self.config['gNumberOfMinislots'] + self.config['gdSymbolWindow'] + \
-                     self.config['gdNIT']
-    # [1, 15]
-    self.gdTSSTransmitter = load_progress_gdTSSTransmitter()
-    # [1, 10]
-    self.gdActionPointOffset = load_progress_gdActionPointOffset()
-    self.values = []
-    for i in range(self.gdTSSTransmitter, 15):
-      for j in range(self.gdActionPointOffset, 10):
-        self.values.append((i, j))
-
-
-  # Calculate timing params according to constraint 18
-  def caclulate_params(self, log_func):
-    # Apparently gNumberOfMinislots of AUDI A4 is not zero.
-    if (self.gdActionPointOffset <= self.config['gdMiniSlotActionPointOffset'] or self.config[
-      'gNumberOfMinislots'] == 0):
-      adActionPointDifference = 0
-    else:
-      adActionPointDifference = self.gdActionPointOffset - self.config['gdMiniSlotActionPointOffset']
-    # Constraint 18
-    diff = self.gMacroPerCycle - self.config['gdStaticSlot'] * self.config['gNumberOfStaticSlots'] - \
-           adActionPointDifference - self.config['gdSymbolWindow'] - self.config['gdNIT']
-    # diff = gNumberOfMinislots * gdMinislot
-    # gNumberOfMinislots is in range [0, 7988]
-    # gdMiniSlot is in ange [2, 63]
-    for f in factors(diff):
-      if 2 <= f <= 63 and 0 < (diff // f) <= 7988:
-        return f, diff // f
-    log_func('Can not find valid params for diff {}, {}'.format(diff, self.print_config()))
-    return 0, 0
-
-  # Generate next valid config.
-  def next(self, log_func):
-    if len(self.values) <= 0:
-      return None
-    while len(self.values) > 0:
-      self.gdTSSTransmitter, self.gdActionPointOffset = self.values[0]
-      self.values = self.values[1:]
-      gdMinislot, gNumberOfMinislots = self.caclulate_params(log_func)
-      if gdMinislot != 0 and gNumberOfMinislots != 0:
-        break
-    if gdMinislot == 0 or gNumberOfMinislots == 0:
-      return None
-    self.cur_config['gdMinislot'] = gdMinislot
-    self.cur_config['gNumberOfMinislots'] = gNumberOfMinislots
-    self.cur_config['gdTSSTransmitter'] = self.gdTSSTransmitter
-    self.cur_config['gdActionPointOffset'] = self.gdActionPointOffset
-
-    # Assume a fixed adOffsetCorrection
-    adOffsetCorrection = self.cur_config['gdNIT'] - 1
-    self.cur_config['gOffsetCorrectionStart'] = self.gMacroPerCycle - adOffsetCorrection
-    while True:
-      ok, err = verify_config(self.cur_config)
-      if ok:
-        break
-      if type(err) == str:
-        log_func('gdActionPointOffset: {}, gdTSSTransmitter: {}, invalid config: {}'.format(
-          self.gdActionPointOffset, self.gdTSSTransmitter, err))
-        return None
-      elif type(err) == tuple:
-        log_func('gdActionPointOffset: {}, gdTSSTransmitter: {}, correct params: {} should be {}'.format(
-          self.gdActionPointOffset, self.gdTSSTransmitter, err[0], err[1]))
-        self.cur_config[err[0]] = err[1]
-    return self.cur_config
-
-  def print_config(self):
-    r = 'gdTSSTransmitter: {}'.format(self.cur_config['gdTSSTransmitter'])
-    r += ', gdActionPointOffset: {}'.format(self.cur_config['gdActionPointOffset'])
-    r += ', gNumberOfMinislots: {}'.format(self.cur_config['gNumberOfMinislots'])
-    r += ', gdMinislot: {}'.format(self.cur_config['gdMinislot'])
-    return r
-
-  def save_progress(self):
-    save_progress_gdActionPointOffset(self.gdActionPointOffset)
-    save_progress_gdTSSTransmitter(self.gdTSSTransmitter)
-
-  @staticmethod
-  def get_cur_progress():
-    return 'gdTSSTransmitter: {}, gdActionPointOffset: {}'.format(
-      load_progress_gdTSSTransmitter(), load_progress_gdActionPointOffset())
-
 class BruteForceGUI(QWidget):
-  def __init__(self, args, bf_class, log_file):
+  def __init__(self, args, bf_class, log_file, config_file=None):
     super().__init__()
     self.args = args
     self.bf_class = bf_class
     self.log_file = log_file
+    self.config_file = config_file
     self.conn = None
     self.elapsed = 0.
     self.timer = QTimer()
@@ -522,8 +347,8 @@ class BruteForceGUI(QWidget):
 
     layout = QVBoxLayout()
     layout.addWidget(tool_bar)
-    layout.addWidget(stats_gb)
     layout.addWidget(progress_gb)
+    layout.addWidget(stats_gb)
     layout.addWidget(monitored_slots_form)
     w = QWidget()
     w.setLayout(layout)
@@ -582,15 +407,20 @@ class BruteForceGUI(QWidget):
   # Step 1, Choose a flexray config file
   def launch_connect_dialogue(self):
     if not self.connected:
-      connect_dlg = ConnectOrConfigDialog(self.cur_config, mode='connect')
-      r = connect_dlg.exec()
-      if r != QDialog.Accepted:
-        return
-      self.cur_config = connect_dlg.cur_config
-      self.add_log('Config file loaded: {}'.format(connect_dlg.cur_config_file))
+      if not self.config_file:
+        connect_dlg = ConnectOrConfigDialog(self.cur_config, mode='connect')
+        r = connect_dlg.exec()
+        if r != QDialog.Accepted:
+          return
+        self.cur_config = connect_dlg.cur_config
+        self.add_log('Config file loaded: {}'.format(connect_dlg.cur_config_file))
+        for t in connect_dlg.verify_result:
+          self.add_log(t)
+      else:
+        self.add_log('Config file loaded: {}'.format(self.config_file))
+        with open(self.config_file, 'r') as f:
+          self.cur_config = yaml.load(f)
       self.bf_algo = self.bf_class(self.cur_config)
-      for t in connect_dlg.verify_result:
-        self.add_log(t)
       self.start_connecting()
 
   def disconnect(self):
@@ -599,6 +429,7 @@ class BruteForceGUI(QWidget):
       self.connect_btn.setEnabled(False)
 
   def cancel_bruteforce(self):
+    self.bf_algo.save_progress()
     self.bf_algo = None
     self.cancel_btn.setEnabled(False)
     if self.connected:
@@ -675,7 +506,8 @@ class BruteForceGUI(QWidget):
     if self.existing:
       self.close()  # closeEVent will be called again
       return
-    self.bf_algo.save_progress()
+    if self.bf_algo:
+      self.bf_algo.save_progress()
     # Retry joining cluster with another set of params
     self.start_connecting()
 
@@ -687,12 +519,8 @@ class BruteForceGUI(QWidget):
     self.status_label_right.setText('   Connected   ')
     self.status_label_right.setStyleSheet(self.connected_text_style)
     self.add_log(' Joined into cluster, sniffing on FlexRay bus...')
-    if self.join_cluster_timer.isActive():
-      self.join_cluster_timer.stop()
     self.add_log(self.bf_algo.print_config())
     self.timer.start(1000)
-    mb = QMessageBox(QMessageBox.Information, '', "Join cluster succeeded.")
-    mb.exec()
 
   # Joining cluster failed.
   def on_join_cluster_failed(self):
@@ -720,6 +548,9 @@ class BruteForceGUI(QWidget):
     self.rx_frames += 1
     self.rx_bytes += payload_len
     self.rx_bytes_within_this_second += payload_len
+    mb = QMessageBox(QMessageBox.Information, '', "Yeah, we received frames!!!")
+    mb.exec()
+
 
   def on_status_data(self, text, casercr, cbsercr, ssr0, ssr1, ssr2, ssr3, ssr4, ssr5, ssr6, ssr7, header_bytes):
     self.detail_status.setText(text)
@@ -775,6 +606,6 @@ def get_arg_parser():
                       help="IP address of flexray adapter.")
   parser.add_argument("--port", nargs="?", default=ADAPTER_TCP_PORT,
                       help="Listen port of flexray adapter.")
-  parser.add_argument("--timeout", nargs="?", type=float, default=3 * 1000.,
+  parser.add_argument("--timeout", nargs="?", type=float, default=1000.,
                       help="Wait timeout for joining cluster.")
   return parser
