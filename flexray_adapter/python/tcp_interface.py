@@ -25,7 +25,7 @@ class HealthThd(threading.Thread):
         try:
             while not self.stopped():
                 self._conn.send_packet(PACKET_TYPE_HEALTH, b'')
-                time.sleep(0.5)  # Set to 0.5 For bruteforce
+                time.sleep(0.2)  # Set to 0.2 For bruteforce
         finally:
             pass
 

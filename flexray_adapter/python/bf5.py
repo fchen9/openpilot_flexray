@@ -69,9 +69,9 @@ class BFAlgo5:
   def generate_all_values():
     # [1, 15] gdTSSTransmitter
     # [1, 10] gdActionPointOffset
-    # [40, 60] gdStaticSlot
+    # [40, 70] gdStaticSlot
     values = []
-    for h in range(40, 60 + 1):
+    for h in range(40, 70 + 1):
       for i in range(1, 15+1):
         for j in range(1, 10 + 1):
           values.append((h, i, j))
@@ -132,7 +132,7 @@ class BFAlgo5:
     return self.cur_config
 
   def print_config(self):
-    secs = len(self.values) - self.progress
+    secs = (len(self.values) - self.progress) // 2
     if secs > 60:
       r = '{} mins {} secs'.format(secs // 60, secs % 60)
     else:
@@ -149,7 +149,7 @@ class BFAlgo5:
   def get_cur_progress():
     values = BFAlgo5.generate_all_values()
     progress = load_progress()
-    secs = len(values) - progress
+    secs = (len(values) - progress) // 2
     if secs > 60:
       r = '{} mins {} secs'.format(secs // 60, secs % 60)
     else:
