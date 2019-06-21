@@ -62,16 +62,16 @@ class BFAlgo5:
     self.gMacroPerCycle = self.config['gdStaticSlot'] * self.config['gNumberOfStaticSlots'] + adActionPointDifference + \
                      self.config['gdMinislot'] * self.config['gNumberOfMinislots'] + self.config['gdSymbolWindow'] + \
                      self.config['gdNIT']
-    # [1, 15] gdTSSTransmitter
-    # [1, 10] gdActionPointOffset
-    # [40, 70] gdStaticSlot
     self.values = BFAlgo5.generate_all_values()
     self.progress = load_progress()
 
   @staticmethod
   def generate_all_values():
+    # [1, 15] gdTSSTransmitter
+    # [1, 10] gdActionPointOffset
+    # [45, 60] gdStaticSlot
     values = []
-    for h in range(40, 70 + 1):
+    for h in range(45, 60 + 1):
       for i in range(1, 15+1):
         for j in range(1, 10 + 1):
           values.append((h, i, j))
