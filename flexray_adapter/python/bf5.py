@@ -69,9 +69,9 @@ class BFAlgo5:
   def generate_all_values():
     # [1, 15] gdTSSTransmitter
     # [1, 10] gdActionPointOffset
-    # [45, 60] gdStaticSlot
+    # [40, 60] gdStaticSlot
     values = []
-    for h in range(45, 60 + 1):
+    for h in range(40, 60 + 1):
       for i in range(1, 15+1):
         for j in range(1, 10 + 1):
           values.append((h, i, j))
