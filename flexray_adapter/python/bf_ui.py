@@ -363,6 +363,11 @@ class BruteForceGUI(QWidget):
     self.setWindowTitle('FlexRay Brute-force Tool')
     self.show()
 
+    # Auto start bf
+    if self.config_file:
+      self.launch_connect_dialogue()
+      self.counter = 0
+
   def closeEvent(self, ev):
     if self.connected:
       self.recv_packets_thread.stop()
@@ -382,10 +387,15 @@ class BruteForceGUI(QWidget):
       self.conn.set_monitored_slots(self.monitored_slots)
 
   def add_log(self, text):
+    #t = datetime.now().strftime('%H:%M:%S.%f')[:-3]
+    #self.log_lv.addItem(t + ' ' + text)
+    #self.log_lv.scrollToBottom()
+    self.add_file_log(text)
+
+  def add_list_log(self, text):
     t = datetime.now().strftime('%H:%M:%S.%f')[:-3]
     self.log_lv.addItem(t + ' ' + text)
     self.log_lv.scrollToBottom()
-    self.add_file_log(text)
 
   def add_file_log(self, text):
     t = datetime.now().strftime('%H:%M:%S.%f')[:-3]
@@ -509,6 +519,10 @@ class BruteForceGUI(QWidget):
     if self.bf_algo:
       self.bf_algo.save_progress()
     # Retry joining cluster with another set of params
+    if self.config_file:
+      self.counter += 1
+      if self.counter >= (self.args.restart_timeout * 2):
+        return self.close()
     self.start_connecting()
 
   def on_recv_pkt_thd_exception(self, e):
@@ -520,7 +534,7 @@ class BruteForceGUI(QWidget):
     self.status_label_right.setStyleSheet(self.connected_text_style)
     self.add_log(' Joined into cluster, sniffing on FlexRay bus...')
     self.add_log(self.bf_algo.print_config())
-    self.timer.start(1000)
+    #self.timer.start(1000)
 
   # Joining cluster failed.
   def on_join_cluster_failed(self):
@@ -545,6 +559,7 @@ class BruteForceGUI(QWidget):
 
   def on_frame_received(self, frame_id, payload_hex, payload_len):
     self.add_log('Rx frame, id: {}, len: {}: '.format(frame_id, payload_len, payload_hex))
+    self.add_file_log('Rx frame, id: {}, len: {}: '.format(frame_id, payload_len, payload_hex))
     self.rx_frames += 1
     self.rx_bytes += payload_len
     self.rx_bytes_within_this_second += payload_len
@@ -553,7 +568,7 @@ class BruteForceGUI(QWidget):
 
 
   def on_status_data(self, text, casercr, cbsercr, ssr0, ssr1, ssr2, ssr3, ssr4, ssr5, ssr6, ssr7, header_bytes):
-    self.detail_status.setText(text)
+    #self.detail_status.setText(text)
     for t in text.split('\n'):
       self.add_log('{}'.format(t))
     r = []
@@ -608,4 +623,6 @@ def get_arg_parser():
                       help="Listen port of flexray adapter.")
   parser.add_argument("--timeout", nargs="?", type=float, default=500.,
                       help="Wait timeout for joining cluster.")
+  parser.add_argument("--restart_timeout", nargs="?", type=int, default=(5*60),
+                      help="Timeout in seconds for auto restarting bf")
   return parser

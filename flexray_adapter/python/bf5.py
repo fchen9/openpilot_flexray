@@ -157,8 +157,12 @@ class BFAlgo5:
     return r + ', gdStaticSlot: {}, gdTSSTransmitter: {}, gdActionPointOffset: {}'.format(
       values[progress][0], values[progress][1], values[progress][2])
 
-if __name__ == '__main__':
+def start():
   app = QApplication(sys.argv)
   args = get_arg_parser().parse_args(sys.argv[1:])
+  print('Auto restart bf after {} seconds'.format(args.restart_timeout))
   ex = BruteForceGUI(args, BFAlgo5, 'bf5.log', './test/audi_a4_b9.yml')
   sys.exit(app.exec())
+
+if __name__ == '__main__':
+  start()
