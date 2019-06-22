@@ -312,7 +312,7 @@ def verify_config(config):
         return False, ('pMacroInitialOffsetA', pMacroInitialOffsetA)
 
     pMacroInitialOffsetB = \
-      config['gdActionPointOffset'] + ceil((config['pDecodingCorrection'] + config['pDelayCompensationA']) / pMicroPerMacroNom)
+      config['gdActionPointOffset'] + ceil((config['pDecodingCorrection'] + config['pDelayCompensationB']) / pMicroPerMacroNom)
     if config['pMacroInitialOffsetB'] != pMacroInitialOffsetB:
         return False, ('pMacroInitialOffsetB', pMacroInitialOffsetB)
 
