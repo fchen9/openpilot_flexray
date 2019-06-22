@@ -962,7 +962,7 @@ uint8_t flexray_driver_get_status_registers(
 }
 
 uint8_t flexray_driver_monitor_slots(uint16_t *slot_ids) {
-	uint16_t reg_val, i = 0;
+	uint16_t reg_val;
 	/* MPC5748G Ref Manual Table 46-10 */
 	reg_val = FR_SSSR0_U16 | slot_ids[0];     /* Configure the slot id which SSR0, SSR1 is monitoring */
 	WRITE_FR_REGISTER16(FR_SSSR_OFFSET, reg_val);

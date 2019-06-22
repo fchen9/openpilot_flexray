@@ -19,7 +19,7 @@ from tcp_interface import Connection, ADAPTER_IP_ADDR, ADAPTER_TCP_PORT
 from constants import *
 from bf_ui import BruteForceGUI, get_arg_parser
 
-PROGRESS_FILE = os.path.expanduser("~/.flexray_adapter/bf5_progress.yaml")
+PROGRESS_FILE = os.path.expanduser("~/.flexray_adapter/bf6_progress.yaml")
 
 def load_progress():
   progress = 0
@@ -48,7 +48,7 @@ def factors(n):
 
 # We got good value 53 for gdStaticSlot, also get vSS!BViolation error.
 # Let's try bf gdStaticSlot[50, 70], gdTSSTransmitter([1, 15]) and gdActionPointOffset ([1, 10])
-class BFAlgo5:
+class BFAlgo6:
   def __init__(self, config):
     # Initial config
     self.config = config
@@ -62,16 +62,16 @@ class BFAlgo5:
     self.gMacroPerCycle = self.config['gdStaticSlot'] * self.config['gNumberOfStaticSlots'] + adActionPointDifference + \
                      self.config['gdMinislot'] * self.config['gNumberOfMinislots'] + self.config['gdSymbolWindow'] + \
                      self.config['gdNIT']
-    self.values = BFAlgo5.generate_all_values()
+    self.values = BFAlgo6.generate_all_values()
     self.progress = load_progress()
 
   @staticmethod
   def generate_all_values():
     # [1, 15] gdTSSTransmitter
     # [1, 10] gdActionPointOffset
-    # [40, 70] gdStaticSlot
+    # [53, 53] gdStaticSlot
     values = []
-    for h in range(40, 70 + 1):
+    for h in [53]:
       for i in range(1, 15+1):
         for j in range(1, 10 + 1):
           values.append((h, i, j))
@@ -109,6 +109,7 @@ class BFAlgo5:
         break
     if self.progress >= len(self.values):  # No more values
       return None
+
     self.cur_config['gdMinislot'] = gdMinislot
     self.cur_config['gNumberOfMinislots'] = gNumberOfMinislots
     self.cur_config['gdTSSTransmitter'] = self.gdTSSTransmitter
@@ -132,7 +133,7 @@ class BFAlgo5:
     return self.cur_config
 
   def print_config(self):
-    secs = (len(self.values) - self.progress) // 2
+    secs = (len(self.values) - self.progress) * 3
     if secs > 60:
       r = '{} mins {} secs'.format(secs // 60, secs % 60)
     else:
@@ -147,7 +148,7 @@ class BFAlgo5:
 
   @staticmethod
   def get_cur_progress():
-    values = BFAlgo5.generate_all_values()
+    values = BFAlgo6.generate_all_values()
     progress = load_progress()
     secs = (len(values) - progress) // 2
     if secs > 60:
@@ -160,8 +161,8 @@ class BFAlgo5:
 def start():
   app = QApplication(sys.argv)
   args = get_arg_parser().parse_args(sys.argv[1:])
-  print('Auto restart bf after {} seconds'.format(args.restart_counter))
-  ex = BruteForceGUI(args, BFAlgo5, 'bf5.log', './test/audi_a4_b9.yml')
+  print('Auto restart bf after {} seconds'.format(args.restart_counter * 3))
+  ex = BruteForceGUI(args, BFAlgo6, 'bf6.log', './test/audi_a4_b9.yml')
   sys.exit(app.exec())
 
 if __name__ == '__main__':

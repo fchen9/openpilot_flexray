@@ -304,6 +304,29 @@ def verify_config(config):
     if config['pDecodingCorrection'] != pDecodingCorrection:
         return False, ('pDecodingCorrection', pDecodingCorrection)
 
+    pMicroPerMacroNom = config['gdMacrotick'] // pdMicrotick
+    # Constraint 33
+    pMacroInitialOffsetA = \
+      config['gdActionPointOffset'] + ceil((config['pDecodingCorrection'] + config['pDelayCompensationA']) / pMicroPerMacroNom)
+    if config['pMacroInitialOffsetA'] != pMacroInitialOffsetA:
+        return False, ('pMacroInitialOffsetA', pMacroInitialOffsetA)
+
+    pMacroInitialOffsetB = \
+      config['gdActionPointOffset'] + ceil((config['pDecodingCorrection'] + config['pDelayCompensationA']) / pMicroPerMacroNom)
+    if config['pMacroInitialOffsetB'] != pMacroInitialOffsetB:
+        return False, ('pMacroInitialOffsetB', pMacroInitialOffsetB)
+
+    # Constraint 34
+    pMicroInitialOffsetA = \
+      int((pMicroPerMacroNom - ((config['pDecodingCorrection'] + config['pDelayCompensationA']) % pMicroPerMacroNom)) % pMicroPerMacroNom)
+    if config['pMicroInitialOffsetA'] != pMicroInitialOffsetA:
+        return False, ('pMicroInitialOffsetA', pMicroInitialOffsetA)
+
+    pMicroInitialOffsetB = \
+      int((pMicroPerMacroNom - ((config['pDecodingCorrection'] + config['pDelayCompensationB']) % pMicroPerMacroNom)) % pMicroPerMacroNom)
+    if config['pMicroInitialOffsetB'] != pMicroInitialOffsetB:
+        return False, ('pMicroInitialOffsetB', pMicroInitialOffsetB)
+
     # Constraint 39
     gdWakeupSymbolTxIdle = ceil(cdWakeupSymbolTxIdle / gdBit)
     if config['gdWakeupSymbolTxIdle'] != gdWakeupSymbolTxIdle:

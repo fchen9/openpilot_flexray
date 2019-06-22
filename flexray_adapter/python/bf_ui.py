@@ -521,7 +521,7 @@ class BruteForceGUI(QWidget):
     # Retry joining cluster with another set of params
     if self.config_file:
       self.counter += 1
-      if self.counter >= (self.args.restart_timeout * 2):
+      if self.counter >= self.args.restart_counter:
         return self.close()
     self.start_connecting()
 
@@ -621,8 +621,8 @@ def get_arg_parser():
                       help="IP address of flexray adapter.")
   parser.add_argument("--port", nargs="?", default=ADAPTER_TCP_PORT,
                       help="Listen port of flexray adapter.")
-  parser.add_argument("--timeout", nargs="?", type=float, default=500.,
+  parser.add_argument("--timeout", nargs="?", type=float, default=3000.,
                       help="Wait timeout for joining cluster.")
-  parser.add_argument("--restart_timeout", nargs="?", type=int, default=(5*60),
-                      help="Timeout in seconds for auto restarting bf")
+  parser.add_argument("--restart_counter", nargs="?", type=int, default=(3*60/3),
+                      help="Max recursions before auto restarting bf")
   return parser
