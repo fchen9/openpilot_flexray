@@ -72,6 +72,7 @@ static void process_packet(const packet_header *pkt_header) {
 	uint8_t ret = FAILED;
 	uint8_t a_even_cnt = 0, b_even_cnt = 0, a_odd_cnt = 0, b_odd_cnt = 0;
     uint32_t i = 0U;
+    uint16_t slots[4] = {8U, 24U, 31U, 45U};
 	packet_header send_pkt_header;
 	switch(EXTRACT_PACKET_FLAG_TYPE(pkt_header->flags)) {
 		case PACKET_TYPE_START_DRIVER:
@@ -90,6 +91,8 @@ static void process_packet(const packet_header *pkt_header) {
             	flexray_driver_deinit();
             	break;
             }
+            // FOr AUDI A4
+            flexray_driver_monitor_slots(&slots[0]);
 			xEventGroupSetBits(g_tcp_data.flexray_in_event_group, EVENT_GROUP_START_FLEXRAY_STATE_MACHINE_BIT);
 			xEventGroupWaitBits(g_tcp_data.event_group, EVENT_GROUP_FLEXRAY_STATE_MACHINE_STARTED_BIT,
 					pdTRUE, pdTRUE, portMAX_DELAY );

@@ -484,7 +484,8 @@ class BruteForceGUI(QWidget):
     self.status_label_left.setText('   Connected   ')
     self.status_label_left.setStyleSheet(self.connected_text_style)
     self.status_label_right.setText('   Joining cluster...   ')
-    self.send_monitored_slots()
+    # Set monitored slots in DEVKIT firmware
+    #self.send_monitored_slots()
 
   # Handle TCP connection error
   def on_connect_failed(self, e):

@@ -232,7 +232,7 @@ def verify_config(config):
 
     # Constraint 6
     gdMacrotick_min = cMicroPerMacroNomMin * pdMicrotick
-    if config['gdMacrotick'] < cMicroPerMacroNomMin * pdMicrotick:
+    if config['gdMacrotick'] < gdMacrotick_min:
         return False, 'gdMacrotick should be equal or greater than {}'.format(gdMacrotick_min)
 
     if (config['gdActionPointOffset'] <= config['gdMiniSlotActionPointOffset'] or config['gNumberOfMinislots'] == 0):
