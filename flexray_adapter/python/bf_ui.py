@@ -622,8 +622,8 @@ def get_arg_parser():
                       help="IP address of flexray adapter.")
   parser.add_argument("--port", nargs="?", default=ADAPTER_TCP_PORT,
                       help="Listen port of flexray adapter.")
-  parser.add_argument("--timeout", nargs="?", type=float, default=3000.,
+  parser.add_argument("--timeout", nargs="?", type=float, default=5000.,
                       help="Wait timeout for joining cluster.")
-  parser.add_argument("--restart_counter", nargs="?", type=int, default=(3*60/3),
+  parser.add_argument("--restart_counter", nargs="?", type=int, default=(3*60/5),
                       help="Max recursions before auto restarting bf")
   return parser

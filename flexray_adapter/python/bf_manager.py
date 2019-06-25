@@ -1,9 +1,9 @@
 from multiprocessing import Process
-from bf7 import start, BFAlgo7, load_progress
+from bf8 import start, BFAlgo8, load_progress
 
 if __name__ == '__main__':
   while True:
-    values = BFAlgo7.generate_all_values()
+    values = BFAlgo8.generate_all_values()
     progress = load_progress()
     print('Cur progress: {}/{}'.format(progress, len(values)))
     if progress == len(values):
