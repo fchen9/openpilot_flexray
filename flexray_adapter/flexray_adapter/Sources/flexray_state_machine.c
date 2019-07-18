@@ -83,6 +83,7 @@ flexray_error set_abs_timer() {
     uint8_t cur_cycle_counter = 0U;
     uint16_t cur_macro_tick = 0U;
     int16_t rate_correction, offset_correction;
+    double gdMacrotick = ((double)g_fr_config.gdCycle) / ((double)(gMacroPerCycle));
     /* Handle read/write before symbol window */
     uint16_t offset_macroticks = (uint16_t)gMacroPerCycle - (g_fr_config.gdSymbolWindow + g_fr_config.gdNIT);
 	/* DEBUG: Track min/max rate/offset corrections */
@@ -115,7 +116,7 @@ flexray_error set_abs_timer() {
 	/* We sleep for a while, give cpu to other tasks, wait the timer to expire.
 	 * FlexRay spec 2.1, B.4.11: max value of gMacroPerCycle is 16000
 	*/
-	sleep( floor((double)(gMacroPerCycle + offset_macroticks  - cur_macro_tick) * ((double)g_fr_config.gdMacrotick) / 1000.0) );
+	sleep( floor((double)(gMacroPerCycle + offset_macroticks  - cur_macro_tick) * gdMacrotick / 1000.0) );
     return FR_ERROR_OK;
 }
 

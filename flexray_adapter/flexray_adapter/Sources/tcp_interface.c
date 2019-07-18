@@ -17,9 +17,11 @@
 /* In milliseconds */
 #define RECV_TIMEOUT 2000U
 #define MAX_RECV_IDLE_TIME 4000U
+#define FLEXRAYADAPTER_VERSION 3888
 
 typedef struct {
 	packet_header msg_hdr;
+	uint32_t version;
 	uint16_t reg_vals[8+2+8];
 	int16_t min_max_corrections[4];
 	/* For bruteforce*/
@@ -72,7 +74,7 @@ static void process_packet(const packet_header *pkt_header) {
 	uint8_t ret = FAILED;
 	uint8_t a_even_cnt = 0, b_even_cnt = 0, a_odd_cnt = 0, b_odd_cnt = 0;
     uint32_t i = 0U;
-    uint16_t slots[4] = {0U, 8U, 24U, 45U};
+    uint16_t slots[4] = {0U, 52U, 78U, 83U};
 	packet_header send_pkt_header;
 	switch(EXTRACT_PACKET_FLAG_TYPE(pkt_header->flags)) {
 		case PACKET_TYPE_START_DRIVER:
@@ -118,6 +120,7 @@ static void process_packet(const packet_header *pkt_header) {
 				tcp_interface_send_packet(PACKET_TYPE_HEALTH, &send_pkt_header, 0);
 				break;
 			}
+			s_status_data_packet.version = FLEXRAYADAPTER_VERSION;
 			/* FlexRay spec 2.1: Section 9.3.1.3 Protocol status data */
 			flexray_driver_get_status_registers(
 					&s_status_data_packet.reg_vals[0],
@@ -141,7 +144,7 @@ static void process_packet(const packet_header *pkt_header) {
 			memcpy(&s_status_data_packet.min_max_corrections[0], &g_flexray_data.max_rate_correction, sizeof(s_status_data_packet.min_max_corrections));
 			tcp_interface_send_packet(PACKET_TYPE_HEALTH,
 					(packet_header *)&s_status_data_packet,
-					sizeof(s_status_data_packet.reg_vals) + sizeof(s_status_data_packet.min_max_corrections) + sizeof(s_status_data_packet.header_content) + (a_even_cnt + b_even_cnt + a_odd_cnt + b_odd_cnt) * sizeof(uint16_t) * 2);
+					sizeof(s_status_data_packet.version) + sizeof(s_status_data_packet.reg_vals) + sizeof(s_status_data_packet.min_max_corrections) + sizeof(s_status_data_packet.header_content) + (a_even_cnt + b_even_cnt + a_odd_cnt + b_odd_cnt) * sizeof(uint16_t) * 2);
 			break;
 		case PACKET_TYPE_MONIOR_SLOTS:
 			if(s_bytes_in_pkt_parse_buf != (sizeof(packet_header) + sizeof(uint16_t) * 4)) {

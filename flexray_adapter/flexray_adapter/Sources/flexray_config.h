@@ -99,7 +99,7 @@ typedef struct
 typedef struct
 {
 	/* Cluster configuration, using naming convention in FlexRay Protocol Specification Version 2.1 Revision A */
-	uint32_t gdMacrotick;
+	uint32_t gdCycle;
 	uint32_t gPayloadLengthStatic;
 	uint32_t gNumberOfStaticSlots;
 	uint32_t gdStaticSlot;
