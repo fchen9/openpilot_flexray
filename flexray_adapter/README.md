@@ -80,8 +80,9 @@ How to establish FlexRay communication between PC and EON
     - A EON running OpenPilot.
     - A [Comma SMAYS](https://comma.ai/shop/products/comma-smays-adapter/) for EON interfacing.
     - Two MPC5748G DEVKIT boards flashed using the output ELF file from the flexray_adapter S32DS project compilation.
+    - FlexRay cable for DEVKIT, a 1.25mm 2pin connector, like [this one](https://uk.rs-online.com/web/p/test-lead-wire/2799522/)
 - Connect all hardware together
-    - Connect the MPC5748 boards via the FlexRay port using a 1.25mm 2pin connector.
+    - Connect the MPC5748 boards via the FlexRay port using the FlexRay connector.
     - Connect a MPC5748 board to EON via Comma SMAYS and an ethernet cable, set the IP address of ethernet adapter to 192.168.5.12.
     - Connect the USB port of Comma SMAYS to PC for power supply.
     - Connect the other MPC5748 board to PC via an ethernet cable, set the IP address of ethernet adapter to 192.168.5.12.
