@@ -10,16 +10,12 @@ WARN_FLAGS = -Werror=implicit-function-declaration \
              -Werror=return-type \
              -Werror=format-extra-args
 
-CFLAGS = -std=gnu11 -g -fPIC -O2 $(WARN_FLAGS)
-CXXFLAGS = -std=c++11 -g -fPIC -O2 $(WARN_FLAGS)
+CFLAGS = -std=gnu11 -fPIC -O2 $(WARN_FLAGS)
+CXXFLAGS = -std=c++11 -fPIC -O2 $(WARN_FLAGS)
 
-ZMQ_FLAGS = -I$(PHONELIBS)/zmq/aarch64/include
-ZMQ_LIBS = -L$(PHONELIBS)/zmq/aarch64/lib \
-           -l:libczmq.a -l:libzmq.a \
-           -lgnustl_shared
+ZMQ_LIBS = -l:libczmq.a -l:libzmq.a -lgnustl_shared
 
-CEREAL_CFLAGS = -I$(PHONELIBS)/capnp-c/include
-CEREAL_LIBS = -L$(PHONELIBS)/capnp-c/aarch64/lib -l:libcapn.a
+CEREAL_LIBS = -l:libcapn.a
 CEREAL_OBJS = ../../cereal/gen/c/log.capnp.o
 
 NANOVG_FLAGS = -I$(PHONELIBS)/nanovg
@@ -30,14 +26,31 @@ OPENCL_LIBS = -lgsl -lCB -lOpenCL
 
 OPENGL_LIBS = -lGLESv3
 
+OPENSL_LIBS = -lOpenSLES
+
+UUID_LIBS = -luuid
+
 FRAMEBUFFER_LIBS = -lutils -lgui -lEGL
 
-CFLAGS += -DQCOM
-CXXFLAGS += -DQCOM
+CFLAGS += -DQCOM \
+          -I$(PHONELIBS)/android_frameworks_native/include \
+          -I$(PHONELIBS)/android_system_core/include \
+          -I$(PHONELIBS)/android_hardware_libhardware/include
+CXXFLAGS += -DQCOM \
+            -I$(PHONELIBS)/android_frameworks_native/include \
+            -I$(PHONELIBS)/android_system_core/include \
+            -I$(PHONELIBS)/android_hardware_libhardware/include
 
-OBJS = ui.o \
+ifeq ($(ARCH),aarch64)
+CFLAGS += -mcpu=cortex-a57
+CXXFLAGS += -mcpu=cortex-a57
+endif
+
+OBJS = slplay.o \
+       ui.o \
        ../common/glutil.o \
        ../common/visionipc.o \
+       ../common/ipc.o \
        ../common/visionimg.o \
        ../common/visionbuf_ion.o \
        ../common/framebuffer.o \
@@ -63,7 +76,17 @@ ui: $(OBJS)
         -lhardware -lui \
         $(OPENGL_LIBS) \
         $(OPENCL_LIBS) \
+        ${OPENSL_LIBS} \
+        ${UUID_LIBS} \
+        -Wl,-rpath=/system/lib64,-rpath=/system/comma/usr/lib \
         -lcutils -lm -llog -lui -ladreno_utils
+
+slplay.o: slplay.c
+	@echo "[ CC ] $@"
+	$(CC) $(CFLAGS) -fPIC \
+	-I../ \
+	$(OPENSL_LIBS) \
+	-c -o '$@' $^
 
 %.o: %.cc
 	@echo "[ CXX ] $@"
