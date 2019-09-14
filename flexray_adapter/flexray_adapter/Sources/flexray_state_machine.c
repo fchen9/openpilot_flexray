@@ -22,11 +22,11 @@ frame_packet s_frame_packet;
 
 typedef struct {
 	packet_header hdr;
-	uint16_t err;
-}error_packet;
-error_packet s_error_packet;
+	uint16_t u16_data;
+}notify_packet;
+notify_packet s_notify_packet;
 
-static flexray_error handle_rx() {
+static flexray_error handle_rx_tx() {
     uint8_t ret = SUCCESS;
     fr_rx_status RxStatus;
     uint8_t u8RxLength = 0U;
@@ -66,6 +66,15 @@ static flexray_error handle_rx() {
 			tcp_interface_send_packet(PACKET_TYPE_FLEXRAY_FRAME, &s_frame_packet.hdr, u8RxLength);
 		}
 	}
+
+    /*Handle tx completion*/
+	for(i = 0;i < (uint8_t)g_fr_config.individual_tx_msg_buf_count;i++)
+		if(g_flexray_data.tx_msg_buf_pending[i] != 0 && flexray_driver_tx_buffer_idle(i) == 1) {
+	    	s_notify_packet.u16_data = i;
+	    	g_flexray_data.tx_msg_buf_pending[i] = 0;
+			tcp_interface_send_packet(PACKET_TYPE_TX_COMPLETED, &s_notify_packet.hdr, sizeof(uint16_t));
+		}
+
     return FR_ERROR_OK;
 }
 
@@ -128,6 +137,7 @@ void flexray_run()
     EventBits_t event_bits;
     packet_header msg_hdr;
     flexray_error err;
+    uint8_t i;
 
     /* Check in event group, start/stop driver on demand */
     event_bits =  xEventGroupWaitBits(
@@ -143,6 +153,8 @@ void flexray_run()
 		g_flexray_data.wait_poc_ready_cycles_counter = MAX_WAIT_POC_STATE_CHANGE_CYCLES;
 		g_flexray_data.state = FLEXRAY_INITIALIZED;
 		g_flexray_data.max_rate_correction = g_flexray_data.min_rate_correction = g_flexray_data.max_offset_correction = g_flexray_data.min_offset_correction = 0;
+		for(i = 0;i < (uint8_t)g_fr_config.individual_tx_msg_buf_count;i++)
+			g_flexray_data.tx_msg_buf_pending[i] = 0;
 		xEventGroupSetBits(g_flexray_data.out_event_group, EVENT_GROUP_FLEXRAY_STATE_MACHINE_STARTED_BIT);
 	}
 	else if((event_bits & EVENT_GROUP_STOP_FLEXRAY_STATE_MACHINE_BIT) != 0) {
@@ -245,7 +257,7 @@ void flexray_run()
 				DBG_PRINT("Error in flexray_driver_get_timer_irq_status %u", ret);
 			} else {
 				if(1 == timer_expired) {
-					err = handle_rx();
+					err = handle_rx_tx();
 					if(FR_ERROR_OK != ret) {
 						g_flexray_data.state = FLEXRAY_ERROR;
 						g_flexray_data.error = err;
@@ -276,8 +288,8 @@ void flexray_run()
             break;
         case FLEXRAY_ERROR:
         	/* Fatal error, should not happen. */
-        	s_error_packet.err = g_flexray_data.error;
-			tcp_interface_send_packet(PACKET_TYPE_FLEXRAY_FATAL_ERROR, &s_error_packet.hdr, sizeof(uint16_t));
+        	s_notify_packet.u16_data = g_flexray_data.error;
+			tcp_interface_send_packet(PACKET_TYPE_FLEXRAY_FATAL_ERROR, &s_notify_packet.hdr, sizeof(uint16_t));
             g_flexray_data.state = FLEXRAY_ERROR_FINAL;
             break;
         case FLEXRAY_ERROR_FINAL:
@@ -299,14 +311,17 @@ uint8_t flexray_write_tx_msg_buf(uint16_t frame_id, uint8_t *payload, uint16_t p
 		DBG_PRINT("Invalid transmit msg buf index: %u", tx_msg_buf_idx );
 		return FAILED;
 	}
-	if(flexray_driver_tx_buffer_idle(tx_msg_buf_idx) == 1) {
+	if(g_flexray_data.tx_msg_buf_pending[tx_msg_buf_idx] == 0) {
+		g_flexray_data.tx_msg_buf_pending[tx_msg_buf_idx] = 1;
 		ret = flexray_driver_write_tx_buffer(tx_msg_buf_idx, payload, payload_length);
 		if(SUCCESS != ret) {
 			DBG_PRINT("flexray_driver_write_tx_buffer on msg buf %u error %u", tx_msg_buf_idx, ret);
 			return FAILED;
 		}
 	} else {
-		/* The slot is busy, drop it */
+		/* The slot is busy, notify the client immediately */
+    	s_notify_packet.u16_data = frame_id;
+		tcp_interface_send_packet(PACKET_TYPE_TX_SLOT_BUSY, &s_notify_packet.hdr, sizeof(uint16_t));
 	}
 	return(ret);
 }

@@ -6,6 +6,8 @@
 #ifndef FLEXRAY_STATE_MACHINE_H_
 #define FLEXRAY_STATE_MACHINE_H_
 
+#include "flexray_config.h"
+
 #define FLEXRAY_SEND_EVENT_QUEUE_LENGTH 128
 #define FLEXRAY_RECV_EVENT_QUEUE_LENGTH 8
 #define FLEXRAY_TX_FRAME_QUEUE_LENGTH 128
@@ -44,6 +46,8 @@ typedef struct
     uint32_t wait_poc_ready_cycles_counter;
 	void *in_event_group;/* For connect/disconnect events sent from TCP/USB task to FR task */
 	void *out_event_group;
+	/* tx_msg_buf state, 1 for tx pending, 0 for idle*/
+	uint8_t tx_msg_buf_pending[MAX_MSG_BUFS];
 	/* Fields for debugging & statistics. */
 	int16_t max_rate_correction;
 	int16_t max_offset_correction;

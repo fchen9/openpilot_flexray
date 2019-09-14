@@ -17,7 +17,7 @@
 /* In milliseconds */
 #define RECV_TIMEOUT 2000U
 #define MAX_RECV_IDLE_TIME 4000U
-#define FLEXRAYADAPTER_VERSION 3888
+#define FLEXRAYADAPTER_VERSION 3889
 
 typedef struct {
 	packet_header msg_hdr;
@@ -73,7 +73,6 @@ static void process_packet(const packet_header *pkt_header) {
 	uint16_t payload_length = 0U;
 	uint8_t ret = FAILED;
 	uint8_t a_even_cnt = 0, b_even_cnt = 0, a_odd_cnt = 0, b_odd_cnt = 0;
-    uint32_t i = 0U;
     uint16_t slots[4] = {0U, 52U, 78U, 83U};
 	packet_header send_pkt_header;
 	switch(EXTRACT_PACKET_FLAG_TYPE(pkt_header->flags)) {

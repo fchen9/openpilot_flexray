@@ -8,8 +8,6 @@
 
 #define PACKET_TYPE_MIN 0
 
-#define PACKET_TYPE_MAX 0x1FU
-
 #define PACKET_TYPE_START_DRIVER 0U
 /* Tx/Rx frame */
 #define PACKET_TYPE_FLEXRAY_FRAME 1U
@@ -25,6 +23,10 @@
 #define PACKET_TYPE_FLEXRAY_FATAL_ERROR 6U
 /* Set monitored slot numbers. */
 #define PACKET_TYPE_MONIOR_SLOTS 7U
+/* Tx slot busy notify, the client have to retry sending on this slot again. */
+#define PACKET_TYPE_TX_SLOT_BUSY 8U
+/* Tx completed notify. */
+#define PACKET_TYPE_TX_COMPLETED 9U
 
 #define EXTRACT_PACKET_FLAG_TYPE(flags) (flags >> 11)
 #define SET_PACKET_FLAG_TYPE(flags, type) do {flags = ((flags & 0x07FFU) | (((uint16_t)type) << 11));} while(0);
