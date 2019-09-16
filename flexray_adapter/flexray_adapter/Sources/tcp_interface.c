@@ -22,6 +22,12 @@
 typedef struct {
 	packet_header msg_hdr;
 	uint32_t version;
+}health_data_msg;
+static health_data_msg s_health_data_msg;
+
+typedef struct {
+	packet_header msg_hdr;
+	uint32_t version;
 	uint16_t reg_vals[8+2+8];
 	int16_t min_max_corrections[4];
 	/* For bruteforce*/
@@ -92,7 +98,7 @@ static void process_packet(const packet_header *pkt_header) {
             	flexray_driver_deinit();
             	break;
             }
-            // FOr AUDI A4
+            // For AUDI A4 bruteforce
             flexray_driver_monitor_slots(&slots[0]);
 			xEventGroupSetBits(g_tcp_data.flexray_in_event_group, EVENT_GROUP_START_FLEXRAY_STATE_MACHINE_BIT);
 			xEventGroupWaitBits(g_tcp_data.event_group, EVENT_GROUP_FLEXRAY_STATE_MACHINE_STARTED_BIT,
@@ -116,7 +122,8 @@ static void process_packet(const packet_header *pkt_header) {
 			break;
 		case PACKET_TYPE_HEALTH:
 			if(!s_flexray_started || (g_fr_config.flags & FR_CONFIG_FLAG_LOG_STATUS_DATA_MASK) == 0) {
-				tcp_interface_send_packet(PACKET_TYPE_HEALTH, &send_pkt_header, 0);
+				s_health_data_msg.version = FLEXRAYADAPTER_VERSION;
+				tcp_interface_send_packet(PACKET_TYPE_HEALTH, &s_health_data_msg, sizeof(uint32_t));
 				break;
 			}
 			s_status_data_packet.version = FLEXRAYADAPTER_VERSION;

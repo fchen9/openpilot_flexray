@@ -7,6 +7,7 @@
 #define PACKET_H_
 
 #define PACKET_TYPE_MIN 0
+#define PACKET_TYPE_MAX 0x1F
 
 #define PACKET_TYPE_START_DRIVER 0U
 /* Tx/Rx frame */
