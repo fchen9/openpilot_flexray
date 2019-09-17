@@ -6,11 +6,11 @@
 #ifndef FLEXRAY_STATE_MACHINE_H_
 #define FLEXRAY_STATE_MACHINE_H_
 
+#include "packet.h"
 #include "flexray_config.h"
+#include "flexray_driver.h"
 
-#define FLEXRAY_SEND_EVENT_QUEUE_LENGTH 128
-#define FLEXRAY_RECV_EVENT_QUEUE_LENGTH 8
-#define FLEXRAY_TX_FRAME_QUEUE_LENGTH 128
+#define CAPTURE_RX_BUFF_SIZE (65535 - 4)
 
 /* FlexRay state machine states*/
 typedef enum {
@@ -48,6 +48,10 @@ typedef struct
 	void *out_event_group;
 	/* tx_msg_buf state, 1 for tx pending, 0 for idle*/
 	uint8_t tx_msg_buf_pending[MAX_MSG_BUFS];
+	uint16_t captured_rx_msg_buf_idx;
+	uint32_t capture_rx_buf_used;
+	packet_header capture_rx_buf_packet_hdr;
+	uint8_t capture_rx_buf[CAPTURE_RX_BUFF_SIZE];
 	/* Fields for debugging & statistics. */
 	int16_t max_rate_correction;
 	int16_t max_offset_correction;

@@ -17,7 +17,7 @@
 /* In milliseconds */
 #define RECV_TIMEOUT 2000U
 #define MAX_RECV_IDLE_TIME 4000U
-#define FLEXRAYADAPTER_VERSION 3889
+#define FLEXRAYADAPTER_VERSION 3890
 
 typedef struct {
 	packet_header msg_hdr;
@@ -80,7 +80,6 @@ static void process_packet(const packet_header *pkt_header) {
 	uint8_t ret = FAILED;
 	uint8_t a_even_cnt = 0, b_even_cnt = 0, a_odd_cnt = 0, b_odd_cnt = 0;
     uint16_t slots[4] = {0U, 52U, 78U, 83U};
-	packet_header send_pkt_header;
 	switch(EXTRACT_PACKET_FLAG_TYPE(pkt_header->flags)) {
 		case PACKET_TYPE_START_DRIVER:
 			if(s_flexray_started) {
@@ -123,7 +122,7 @@ static void process_packet(const packet_header *pkt_header) {
 		case PACKET_TYPE_HEALTH:
 			if(!s_flexray_started || (g_fr_config.flags & FR_CONFIG_FLAG_LOG_STATUS_DATA_MASK) == 0) {
 				s_health_data_msg.version = FLEXRAYADAPTER_VERSION;
-				tcp_interface_send_packet(PACKET_TYPE_HEALTH, &s_health_data_msg, sizeof(uint32_t));
+				tcp_interface_send_packet(PACKET_TYPE_HEALTH, &s_health_data_msg.msg_hdr, sizeof(uint32_t));
 				break;
 			}
 			s_status_data_packet.version = FLEXRAYADAPTER_VERSION;
@@ -158,6 +157,14 @@ static void process_packet(const packet_header *pkt_header) {
 				break;
 			}
 			flexray_driver_monitor_slots((uint16_t *)(pkt_header + 1));
+			break;
+		case PACKET_TYPE_SET_CAPTURED_RX_MSG_BUF_IDX:
+			if(s_bytes_in_pkt_parse_buf != (sizeof(packet_header) + sizeof(uint16_t))) {
+				DBG_PRINT("Invalid PACKET_TYPE_SET_CAPTURED_RX_MSG_BUF_IDX msg length: %u", s_bytes_in_pkt_parse_buf );
+				break;
+			}
+			g_flexray_data.captured_rx_msg_buf_idx = *(uint16_t *)(pkt_header + 1);
+			break;
 	}
 	s_bytes_in_pkt_parse_buf = 0;
 }
