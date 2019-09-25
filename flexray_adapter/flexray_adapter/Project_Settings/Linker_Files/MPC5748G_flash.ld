@@ -33,7 +33,7 @@ ENTRY(_start)
 __HEAP_SIZE = DEFINED(__heap_size__)  ? __heap_size__  : 0x00000000;
 __STACK_SIZE = DEFINED(__stack_size__) ? __stack_size__ : 0x00001000;
 
-SRAM_SIZE =  512K;
+SRAM_SIZE = 512K;
 /* Define SRAM Base Address */
 SRAM_BASE_ADDR = 0x40000000;
 

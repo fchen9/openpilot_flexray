@@ -863,8 +863,6 @@ uint8_t flexray_driver_read_rx_frame_header_without_check(uint8_t rx_msg_buf_idx
     uint8_t msg_buf_num;
     uint16_t reg_offset;
     volatile uint16_t * msg_header_ptr;
-    uint8_t payload_len;  /* In Words */
-	uint32_t msr;
 
     msg_buf_num = g_mem_layout.individual_msg_buf_numbers[rx_msg_buf_idx];
     reg_offset = (((uint16_t)msg_buf_num) * 4U);

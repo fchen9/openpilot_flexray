@@ -16,7 +16,9 @@ flexray_data g_flexray_data = {
 		.state = FLEXRAY_WAITING_CLIENT_CONNECTION,
 		.error = FR_ERROR_OK,
 		.captured_rx_msg_buf_idx = 0xFFFFU,
-		.capture_rx_buf_used = 0U
+		.replay_tx_msg_buf_idx = 0xFFFFU,
+		.capture_rx_buf_used = 0U,
+		.capture_rx_buf_replayed = 0U
 };
 
 typedef struct {
@@ -38,13 +40,11 @@ static flexray_error handle_rx_tx() {
     uint8_t i = 0U;
     uint16_t frame_id = 0;
     uint8_t *rx_buf_ptr = NULL;
-    uint8_t cur_cycle_counter = 0U;
-    uint16_t cur_macro_tick = 0U;
     uint8_t use_capture_buf = 0U;
     /* Receive on all individual rx msg bufs and FIFOs */
 	for(; i < (uint8_t)g_fr_config.individual_rx_msg_buf_count; i++) {
-		if(g_flexray_data.captured_rx_msg_buf_idx == i && (g_flexray_data.capture_rx_buf_used + 2 + cPayloadLengthMax * 2) < CAPTURE_RX_BUFF_SIZE) {
-			rx_buf_ptr = &g_flexray_data.capture_rx_buf[g_flexray_data.capture_rx_buf_used + 2];
+		if(g_flexray_data.captured_rx_msg_buf_idx == i && (g_flexray_data.capture_rx_buf_used + 1 + cPayloadLengthMax * 2) < CAPTURE_RX_BUFF_SIZE) {
+			rx_buf_ptr = &g_flexray_data.capture_rx_buf[g_flexray_data.capture_rx_buf_used + 1];
 			use_capture_buf = 1;
 		} else {
 			rx_buf_ptr = &s_frame_packet.payload[0];
@@ -60,17 +60,13 @@ static flexray_error handle_rx_tx() {
 				if(use_capture_buf) {
 					// Save this frame in buffer, send to client later as a batch
 					g_flexray_data.capture_rx_buf[g_flexray_data.capture_rx_buf_used] = u8RxLength;
-				    flexray_driver_get_global_time(&cur_cycle_counter, &cur_macro_tick);
-					g_flexray_data.capture_rx_buf[g_flexray_data.capture_rx_buf_used + 1] = cur_cycle_counter;
-					g_flexray_data.capture_rx_buf_used += (2 + u8RxLength);
+					g_flexray_data.capture_rx_buf_used += (1 + u8RxLength);
 					// Capture buffer full?
 					if((g_flexray_data.capture_rx_buf_used + 2 + cPayloadLengthMax * 2) >= CAPTURE_RX_BUFF_SIZE) {
-						tcp_interface_send_packet(
-								PACKET_TYPE_CAPTURED_RX_BUF, &g_flexray_data.capture_rx_buf_packet_hdr, g_flexray_data.capture_rx_buf_used);
-						g_flexray_data.capture_rx_buf_used = 0;
+						// TODO: Send captured frames to PC
 					}
-				}else {
-					// Forward this frame to client
+				} else {
+					// Forward this frame to client immediately
 					SET_PACKET_FLAG_FRAME_ID(s_frame_packet.hdr.flags, g_fr_config.msg_bufs[i].frame_id);
 					tcp_interface_send_packet(PACKET_TYPE_FLEXRAY_FRAME, &s_frame_packet.hdr, u8RxLength);
 				}
@@ -106,6 +102,16 @@ static flexray_error handle_rx_tx() {
 			tcp_interface_send_packet(PACKET_TYPE_TX_COMPLETED, &s_notify_packet.hdr, sizeof(uint16_t));
 		}
 
+	if(g_flexray_data.replay_tx_msg_buf_idx != 0xFFFFU && \
+		g_flexray_data.capture_rx_buf_replayed < g_flexray_data.capture_rx_buf_used && \
+		flexray_driver_tx_buffer_idle(g_flexray_data.replay_tx_msg_buf_idx) == 1) {
+		u8RxLength = *(uint8_t *)&g_flexray_data.capture_rx_buf[g_flexray_data.capture_rx_buf_replayed];
+		rx_buf_ptr = &g_flexray_data.capture_rx_buf[g_flexray_data.capture_rx_buf_replayed + 1];
+		ret = flexray_driver_write_tx_buffer(g_flexray_data.replay_tx_msg_buf_idx, rx_buf_ptr, u8RxLength);
+		if(SUCCESS != ret)
+			DBG_PRINT("flexray_driver_write_tx_buffer on msg buf %u error %u", g_flexray_data.replay_tx_msg_buf_idx, ret);
+		g_flexray_data.capture_rx_buf_replayed += (1 + u8RxLength);
+	}
     return FR_ERROR_OK;
 }
 
@@ -194,8 +200,9 @@ void flexray_run()
 		print_task_statistics();
 #endif
 		g_flexray_data.state = FLEXRAY_WAITING_CLIENT_CONNECTION;
-		g_flexray_data.capture_rx_buf_used = 0U;
-		g_flexray_data.captured_rx_msg_buf_idx = 0xFFFFU;
+		g_flexray_data.captured_rx_msg_buf_idx = 0xFFFFU; /* Disable frame capturing */
+		g_flexray_data.replay_tx_msg_buf_idx = 0xFFFFU; /* Disable frame replay */
+		g_flexray_data.capture_rx_buf_replayed = 0U;
 		xEventGroupSetBits(g_flexray_data.out_event_group, EVENT_GROUP_FLEXRAY_STATE_MACHINE_STOPPED_BIT);
     }
 
