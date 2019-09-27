@@ -15,10 +15,8 @@
 flexray_data g_flexray_data = {
 		.state = FLEXRAY_WAITING_CLIENT_CONNECTION,
 		.error = FR_ERROR_OK,
-		.captured_rx_msg_buf_idx = 0xFFFFU,
-		.replay_tx_msg_buf_idx = 0xFFFFU,
 		.capture_rx_buf_used = 0U,
-		.capture_rx_buf_replayed = 0U
+		.capture_rx_buf_forwarded = 0U,
 };
 
 typedef struct {
@@ -41,10 +39,13 @@ static flexray_error handle_rx_tx() {
     uint16_t frame_id = 0;
     uint8_t *rx_buf_ptr = NULL;
     uint8_t use_capture_buf = 0U;
+    uint32_t j = 0;
+    uint8_t rx_idx = 0;
+    packet_header *phdr;
     /* Receive on all individual rx msg bufs and FIFOs */
 	for(; i < (uint8_t)g_fr_config.individual_rx_msg_buf_count; i++) {
-		if(g_flexray_data.captured_rx_msg_buf_idx == i && (g_flexray_data.capture_rx_buf_used + 1 + cPayloadLengthMax * 2) < CAPTURE_RX_BUFF_SIZE) {
-			rx_buf_ptr = &g_flexray_data.capture_rx_buf[g_flexray_data.capture_rx_buf_used + 1];
+		if((g_flexray_data.capture_rx_buf_used + SIZE_OF_CAPTURE_HEADER + cPayloadLengthMax * 2) < CAPTURE_RX_BUFF_SIZE) {
+			rx_buf_ptr = &g_flexray_data.capture_rx_buf[g_flexray_data.capture_rx_buf_used + SIZE_OF_CAPTURE_HEADER];
 			use_capture_buf = 1;
 		} else {
 			rx_buf_ptr = &s_frame_packet.payload[0];
@@ -60,10 +61,20 @@ static flexray_error handle_rx_tx() {
 				if(use_capture_buf) {
 					// Save this frame in buffer, send to client later as a batch
 					g_flexray_data.capture_rx_buf[g_flexray_data.capture_rx_buf_used] = u8RxLength;
-					g_flexray_data.capture_rx_buf_used += (1 + u8RxLength);
+					g_flexray_data.capture_rx_buf[g_flexray_data.capture_rx_buf_used + sizeof(uint8_t)] = (uint8_t)i;
+					g_flexray_data.capture_rx_buf_used += (SIZE_OF_CAPTURE_HEADER + u8RxLength);
 					// Capture buffer full?
-					if((g_flexray_data.capture_rx_buf_used + 2 + cPayloadLengthMax * 2) >= CAPTURE_RX_BUFF_SIZE) {
-						// TODO: Send captured frames to PC
+					if((g_flexray_data.capture_rx_buf_used + SIZE_OF_CAPTURE_HEADER + cPayloadLengthMax * 2) >= CAPTURE_RX_BUFF_SIZE) {
+						// TODO: Forward captured frames to PC
+						for(j = 0; j < g_flexray_data.capture_rx_buf_used;) {
+							u8RxLength = *(uint8_t *)&g_flexray_data.capture_rx_buf[j];
+							rx_idx = *(uint8_t *)&g_flexray_data.capture_rx_buf[j + sizeof(uint8_t)];
+							phdr = (packet_header *)&g_flexray_data.capture_rx_buf[j + sizeof(uint8_t) * 2];
+							SET_PACKET_FLAG_FRAME_ID((phdr->flags), g_fr_config.msg_bufs[rx_idx].frame_id);
+							tcp_interface_send_packet(PACKET_TYPE_FLEXRAY_FRAME2, phdr, u8RxLength);
+							j += SIZE_OF_CAPTURE_HEADER +  u8RxLength;
+						}
+						g_flexray_data.capture_rx_buf_forwarded = g_flexray_data.capture_rx_buf_used;
 					}
 				} else {
 					// Forward this frame to client immediately
@@ -101,7 +112,7 @@ static flexray_error handle_rx_tx() {
 	    	g_flexray_data.tx_msg_buf_pending[i] = 0;
 			tcp_interface_send_packet(PACKET_TYPE_TX_COMPLETED, &s_notify_packet.hdr, sizeof(uint16_t));
 		}
-
+#if 0
 	if(g_flexray_data.replay_tx_msg_buf_idx != 0xFFFFU && \
 		g_flexray_data.capture_rx_buf_replayed < g_flexray_data.capture_rx_buf_used && \
 		flexray_driver_tx_buffer_idle(g_flexray_data.replay_tx_msg_buf_idx) == 1) {
@@ -112,6 +123,7 @@ static flexray_error handle_rx_tx() {
 			DBG_PRINT("flexray_driver_write_tx_buffer on msg buf %u error %u", g_flexray_data.replay_tx_msg_buf_idx, ret);
 		g_flexray_data.capture_rx_buf_replayed += (1 + u8RxLength);
 	}
+#endif
     return FR_ERROR_OK;
 }
 
@@ -200,9 +212,8 @@ void flexray_run()
 		print_task_statistics();
 #endif
 		g_flexray_data.state = FLEXRAY_WAITING_CLIENT_CONNECTION;
-		g_flexray_data.captured_rx_msg_buf_idx = 0xFFFFU; /* Disable frame capturing */
-		g_flexray_data.replay_tx_msg_buf_idx = 0xFFFFU; /* Disable frame replay */
-		g_flexray_data.capture_rx_buf_replayed = 0U;
+		g_flexray_data.capture_rx_buf_used = 0U;
+		g_flexray_data.capture_rx_buf_forwarded = 0U;
 		xEventGroupSetBits(g_flexray_data.out_event_group, EVENT_GROUP_FLEXRAY_STATE_MACHINE_STOPPED_BIT);
     }
 
@@ -358,6 +369,7 @@ uint8_t flexray_write_tx_msg_buf(uint16_t frame_id, uint8_t *payload, uint16_t p
 			DBG_PRINT("flexray_driver_write_tx_buffer on msg buf %u error %u", tx_msg_buf_idx, ret);
 			return FAILED;
 		}
+
 	} else {
 		/* The slot is busy, notify the client immediately */
     	s_notify_packet.u16_data = frame_id;

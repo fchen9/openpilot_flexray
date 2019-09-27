@@ -11,6 +11,7 @@
 #include "flexray_driver.h"
 
 #define CAPTURE_RX_BUFF_SIZE (256 * 1024)
+#define SIZE_OF_CAPTURE_HEADER (sizeof(uint8_t) * 2 + sizeof(packet_header))
 
 /* FlexRay state machine states*/
 typedef enum {
@@ -50,14 +51,9 @@ typedef struct
 	uint8_t tx_msg_buf_pending[MAX_MSG_BUFS];
 
 	/* Capture mode settings*/
-	uint16_t captured_rx_msg_buf_idx;
 	uint32_t capture_rx_buf_used;
-	packet_header capture_rx_buf_packet_hdr;
+	uint32_t capture_rx_buf_forwarded;
 	uint8_t capture_rx_buf[CAPTURE_RX_BUFF_SIZE];
-
-	/* Replay mode settings*/
-	uint16_t replay_tx_msg_buf_idx;
-	uint32_t capture_rx_buf_replayed;
 
 	/* Fields for debugging & statistics. */
 	int16_t max_rate_correction;

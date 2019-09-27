@@ -28,10 +28,8 @@
 #define PACKET_TYPE_TX_SLOT_BUSY 8U
 /* Tx completed notify. */
 #define PACKET_TYPE_TX_COMPLETED 9U
-/* Set captured rx msg buf index. */
-#define PACKET_TYPE_SET_CAPTURED_RX_MSG_BUF_IDX 10U
-/* Set replay tx msg buf index*/
-#define PACKET_TYPE_SET_REPLAY_TX_MSG_BUF_IDX 11U
+/* Captured frame. */
+#define PACKET_TYPE_FLEXRAY_FRAME2 10U
 
 #define EXTRACT_PACKET_FLAG_TYPE(flags) (flags >> 11)
 #define SET_PACKET_FLAG_TYPE(flags, type) do {flags = ((flags & 0x07FFU) | (((uint16_t)type) << 11));} while(0);
