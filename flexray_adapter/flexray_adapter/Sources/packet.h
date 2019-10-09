@@ -30,6 +30,8 @@
 #define PACKET_TYPE_TX_COMPLETED 9U
 /* Captured frame. */
 #define PACKET_TYPE_FLEXRAY_FRAME2 10U
+/* Auto send tx msg buf idx. */
+#define PACKET_TYPE_SET_AUTO_SEND_TX_MSG_BUF_IDX 11U
 
 #define EXTRACT_PACKET_FLAG_TYPE(flags) (flags >> 11)
 #define SET_PACKET_FLAG_TYPE(flags, type) do {flags = ((flags & 0x07FFU) | (((uint16_t)type) << 11));} while(0);

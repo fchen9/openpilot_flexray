@@ -17,7 +17,7 @@
 /* In milliseconds */
 #define RECV_TIMEOUT 2000U
 #define MAX_RECV_IDLE_TIME 4000U
-#define FLEXRAYADAPTER_VERSION 3892
+#define FLEXRAYADAPTER_VERSION 3893
 
 typedef struct {
 	uint32_t version;
@@ -166,6 +166,13 @@ static void process_packet(const packet_header *pkt_header) {
 				break;
 			}
 			flexray_driver_monitor_slots((uint16_t *)(pkt_header + 1));
+			break;
+		case PACKET_TYPE_SET_AUTO_SEND_TX_MSG_BUF_IDX:
+			if(s_bytes_in_pkt_parse_buf != (sizeof(packet_header) + sizeof(uint8_t))) {
+				DBG_PRINT("Invalid PACKET_TYPE_SET_AUTO_SEND_TX_MSG_BUF_IDX msg length: %u", s_bytes_in_pkt_parse_buf );
+				break;
+			}
+			g_flexray_data.auto_send_tx_msg_buf_idx = *(uint8_t *)(pkt_header + 1);
 			break;
 	}
 	s_bytes_in_pkt_parse_buf = 0;
