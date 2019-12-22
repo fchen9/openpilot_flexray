@@ -2,6 +2,7 @@
 import os
 import gc
 import capnp
+from cffi import FFI
 from cereal import car, log
 from common.numpy_fast import clip
 from common.realtime import sec_since_boot, set_realtime_priority, Ratekeeper, DT_CTRL
@@ -27,6 +28,7 @@ from selfdrive.controls.lib.driver_monitor import DriverStatus, MAX_TERMINAL_ALE
 from selfdrive.controls.lib.planner import LON_MPC_STEP
 from selfdrive.controls.lib.gps_helpers import is_rhd_region
 from selfdrive.locationd.calibration_helpers import Calibration, Filter
+from selfdrive.controls.controlsd_cc import libcontrolsd_cc
 
 ThermalStatus = log.ThermalData.ThermalStatus
 State = log.ControlsState.OpenpilotState
@@ -438,9 +440,8 @@ def controlsd_thread(sm=None, pm=None, can_sock=None):
     sm = messaging.SubMaster(['thermal', 'health', 'liveCalibration', 'driverMonitoring', 'plan', 'pathPlan', \
                               'gpsLocation'], ignore_alive=['gpsLocation'])
 
-
+  can_timeout = None if os.environ.get('NO_CAN_TIMEOUT', False) else 100
   if can_sock is None:
-    can_timeout = None if os.environ.get('NO_CAN_TIMEOUT', False) else 100
     can_sock = messaging.sub_sock('can', timeout=can_timeout)
 
   # wait for health and CAN packets
@@ -459,7 +460,8 @@ def controlsd_thread(sm=None, pm=None, can_sock=None):
     CP.safetyModel = car.CarParams.SafetyModel.noOutput
 
   # Write CarParams for radard and boardd safety mode
-  params.put("CarParams", CP.to_bytes())
+  car_params_bytes = CP.to_bytes()
+  params.put("CarParams", car_params_bytes)
   params.put("LongitudinalControl", "1" if CP.openpilotLongitudinalControl else "0")
 
   CC = car.CarControl.new_message()
@@ -505,6 +507,19 @@ def controlsd_thread(sm=None, pm=None, can_sock=None):
   rk = Ratekeeper(100, print_delay_threshold=None)
 
   internet_needed = params.get("Offroad_ConnectivityNeeded", encoding='utf8') is not None
+
+  # Run cpp version of controlsd for toyota cars
+  if CP.carName == 'toyota':
+    # Close pub sockets, so that cpp code can do pub
+    pm.sock.clear()
+    libcontrolsd_cc.init(can_timeout)
+    ffi = FFI()
+    car_params_data = ffi.new('unsigned char[]', car_params_bytes)
+    controls_dir = os.path.dirname(os.path.abspath(__file__))
+    libdbc_fn = ffi.new('char[]', os.path.join(os.path.dirname(controls_dir), 'can', "libdbc.so").encode('ascii'))
+    libcontrolsd_cc.run(internet_needed, read_only, sounds_available, car_params_data, len(car_params_bytes),
+                        car_recognized, controller_available, libdbc_fn)
+    return
 
   prof = Profiler(False)  # off by default
 
